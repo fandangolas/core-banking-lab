@@ -5,6 +5,7 @@ import (
 	"bank-api/tests/integration/testenv"
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -41,6 +42,10 @@ func TestConcurrentTransfer(t *testing.T) {
 			resp := httptest.NewRecorder()
 
 			testenv.SetupRouter().ServeHTTP(resp, req)
+
+			if resp.Code != http.StatusOK {
+				t.Errorf("Erro na transferência: %d", resp.Code)
+			}
 		}()
 	}
 
