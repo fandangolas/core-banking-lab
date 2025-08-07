@@ -9,17 +9,19 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentTransfer(t *testing.T) {
-	testenv.SetupRouter()
+	router := testenv.SetupRouter()
 	defer database.Repo.Reset()
 
-	fromID := testenv.CreateAccount(t, "Fonte")
-	toID := testenv.CreateAccount(t, "Destino")
+	fromID := testenv.CreateAccount(t, router, "Fonte")
+	toID := testenv.CreateAccount(t, router, "Destino")
 
 	// Damos saldo inicial à conta origem
-	testenv.Deposit(t, fromID, 10000) // R$ 100,00
+	testenv.Deposit(t, router, fromID, 10000) // R$ 100,00
 
 	var wg sync.WaitGroup
 	n := 100
@@ -41,7 +43,7 @@ func TestConcurrentTransfer(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			resp := httptest.NewRecorder()
 
-			testenv.SetupRouter().ServeHTTP(resp, req)
+			router.ServeHTTP(resp, req)
 
 			if resp.Code != http.StatusOK {
 				t.Errorf("Erro na transferência: %d", resp.Code)
@@ -51,14 +53,10 @@ func TestConcurrentTransfer(t *testing.T) {
 
 	wg.Wait()
 
-	fromFinal := testenv.GetBalance(t, fromID)
-	toFinal := testenv.GetBalance(t, toID)
+	fromFinal := testenv.GetBalance(t, router, fromID)
+	toFinal := testenv.GetBalance(t, router, toID)
 	expected := n * amount
 
-	if fromFinal != (10000-expected) || toFinal != expected {
-		t.Errorf("CONCORRÊNCIA DETECTADA: Saldo incorreto.\n  Origem: %d (esperado %d)\n  Destino: %d (esperado %d)",
-			fromFinal, 10000-expected, toFinal, expected)
-	} else {
-		t.Logf("Sem problemas detectados — mas improvável sem mutex!")
-	}
+	require.Equal(t, 10000-expected, fromFinal)
+	require.Equal(t, expected, toFinal)
 }

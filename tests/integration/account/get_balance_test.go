@@ -3,20 +3,37 @@ package account
 import (
 	"bank-api/src/diplomat/database"
 	"bank-api/tests/integration/testenv"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetBalance(t *testing.T) {
-	testenv.SetupRouter()
+	router := testenv.SetupRouter()
 	defer database.Repo.Reset()
 
-	accountID := testenv.CreateAccount(t, "Nico")
-	testenv.Deposit(t, accountID, 7500)
+	accountID := testenv.CreateAccount(t, router, "Nico")
+	testenv.Deposit(t, router, accountID, 7500)
 
-	balance := testenv.GetBalance(t, accountID)
-	expected := 7500
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 7500, balance)
+}
 
-	if balance != expected {
-		t.Fatalf("Esperado saldo %d, obtido %d", expected, balance)
-	}
+func TestGetBalanceNonexistentAccount(t *testing.T) {
+	router := testenv.SetupRouter()
+	defer database.Repo.Reset()
+
+	req := httptest.NewRequest("GET", "/accounts/999/balance", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusNotFound, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.NotEmpty(t, result["error"])
 }
