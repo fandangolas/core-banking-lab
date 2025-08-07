@@ -53,6 +53,9 @@ func Transfer(c *gin.Context) {
 	from.Balance -= req.Amount
 	to.Balance += req.Amount
 
+	db.InMemory.UpdateAccount(from)
+	db.InMemory.UpdateAccount(to)
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Transferência realizada com sucesso",
 		"from_balance": from.Balance,

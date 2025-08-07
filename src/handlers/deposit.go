@@ -36,6 +36,8 @@ func Deposit(c *gin.Context) {
 		return
 	}
 
+	db.InMemory.UpdateAccount(account)
+
 	balance := logic.GetBalance(account)
 
 	c.JSON(http.StatusOK, gin.H{
