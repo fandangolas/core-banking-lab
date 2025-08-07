@@ -40,7 +40,7 @@ Traditional banking APIs often hide the complexity of concurrency control, infra
 - **PostgreSQL Adapter** still needs a concrete implementation and validation tests  
 - **Swagger/OpenAPI** documentation for endpoints is missing  
 - No **observability** (Prometheus/Grafana) or **CI/CD** pipelines configured  
-- Lacks **concurrency diagrams** and **benchmark results** to differentiate from a basic CRUD demo :contentReference[oaicite:1]{index=1}
+- Lacks **concurrency diagrams** and **benchmark results** to differentiate from a basic CRUD demo
 
 ## Roadmap & Next Steps
 
