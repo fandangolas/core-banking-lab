@@ -45,6 +45,13 @@ func (db *InMemoryDB) GetAccount(id int) (*models.Account, bool) {
 	return account, ok
 }
 
+func (db *InMemoryDB) UpdateAccount(acc *models.Account) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	db.accounts[acc.Id] = acc
+}
+
 func (db *InMemoryDB) Reset() {
 	db.mu.Lock()
 	defer db.mu.Unlock()

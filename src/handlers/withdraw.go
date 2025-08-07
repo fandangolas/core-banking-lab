@@ -37,9 +37,9 @@ func Withdraw(c *gin.Context) {
 		return
 	}
 
-	account.Mu.Lock()
-	balance := account.Balance
-	account.Mu.Unlock()
+	db.InMemory.UpdateAccount(account)
+
+	balance := logic.GetBalance(account)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Saque realizado com sucesso",
