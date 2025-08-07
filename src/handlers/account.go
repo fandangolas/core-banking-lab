@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bank-api/src/db"
+	"bank-api/src/logic"
 	"net/http"
 	"strconv"
 
@@ -35,9 +36,10 @@ func GetBalance(c *gin.Context) {
 		return
 	}
 
+	balance := logic.GetBalance(account)
 	c.JSON(http.StatusOK, gin.H{
 		"id":      account.Id,
 		"owner":   account.Owner,
-		"balance": account.Balance,
+		"balance": balance,
 	})
 }

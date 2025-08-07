@@ -40,3 +40,11 @@ func RemoveAmount(acc *models.Account, amount int) error {
 
 	return err
 }
+
+func GetBalance(acc *models.Account) int {
+	var balance int
+	withAccountLock(acc, func() {
+		balance = acc.Balance
+	})
+	return balance
+}
