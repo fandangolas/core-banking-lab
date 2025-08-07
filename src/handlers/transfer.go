@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"bank-api/src/db"
+	"bank-api/src/diplomat/database"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,13 +23,13 @@ func Transfer(c *gin.Context) {
 		return
 	}
 
-	from, ok := db.InMemory.GetAccount(req.FromID)
+	from, ok := database.Repo.GetAccount(req.FromID)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Conta de origem não encontrada"})
 		return
 	}
 
-	to, ok := db.InMemory.GetAccount(req.ToID)
+	to, ok := database.Repo.GetAccount(req.ToID)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Conta de destino não encontrada"})
 		return
@@ -53,8 +53,8 @@ func Transfer(c *gin.Context) {
 	from.Balance -= req.Amount
 	to.Balance += req.Amount
 
-	db.InMemory.UpdateAccount(from)
-	db.InMemory.UpdateAccount(to)
+	database.Repo.UpdateAccount(from)
+	database.Repo.UpdateAccount(to)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Transferência realizada com sucesso",

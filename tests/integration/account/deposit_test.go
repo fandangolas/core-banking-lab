@@ -1,7 +1,7 @@
 package account
 
 import (
-	"bank-api/src/db"
+	"bank-api/src/diplomat/database"
 	"bank-api/tests/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 
 func TestSimpleDeposit(t *testing.T) {
 	testenv.SetupRouter()
-	defer db.InMemory.Reset()
+	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, "Nicolas")
 

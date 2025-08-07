@@ -1,27 +1,25 @@
-package db
+package database
 
 import (
 	"bank-api/src/models"
 	"sync"
 )
 
-type InMemoryDB struct {
+type InMemory struct {
 	accounts map[int]*models.Account
 	nextID   int
-
-	mu sync.RWMutex
+	mu       sync.RWMutex
 }
 
-var InMemory *InMemoryDB
-
-func Init() {
-	InMemory = &InMemoryDB{
+// NewInMemory creates a new in-memory repository instance.
+func NewInMemory() Repository {
+	return &InMemory{
 		accounts: make(map[int]*models.Account),
 		nextID:   1,
 	}
 }
 
-func (db *InMemoryDB) CreateAccount(owner string) int {
+func (db *InMemory) CreateAccount(owner string) int {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
@@ -31,13 +29,13 @@ func (db *InMemoryDB) CreateAccount(owner string) int {
 	db.accounts[id] = &models.Account{
 		Id:      id,
 		Owner:   owner,
-		Balance: 0.0,
+		Balance: 0,
 	}
 
 	return id
 }
 
-func (db *InMemoryDB) GetAccount(id int) (*models.Account, bool) {
+func (db *InMemory) GetAccount(id int) (*models.Account, bool) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
@@ -45,14 +43,14 @@ func (db *InMemoryDB) GetAccount(id int) (*models.Account, bool) {
 	return account, ok
 }
 
-func (db *InMemoryDB) UpdateAccount(acc *models.Account) {
+func (db *InMemory) UpdateAccount(acc *models.Account) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
 	db.accounts[acc.Id] = acc
 }
 
-func (db *InMemoryDB) Reset() {
+func (db *InMemory) Reset() {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"bank-api/src/db"
-	"bank-api/src/logic"
+	"bank-api/src/diplomat/database"
+	"bank-api/src/domain"
 	"net/http"
 	"strconv"
 
@@ -25,20 +25,20 @@ func Deposit(c *gin.Context) {
 		return
 	}
 
-	account, ok := db.InMemory.GetAccount(id)
+	account, ok := database.Repo.GetAccount(id)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 		return
 	}
 
-	if err := logic.AddAmount(account, req.Amount); err != nil {
+	if err := domain.AddAmount(account, req.Amount); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	db.InMemory.UpdateAccount(account)
+	database.Repo.UpdateAccount(account)
 
-	balance := logic.GetBalance(account)
+	balance := domain.GetBalance(account)
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      account.Id,
