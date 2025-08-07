@@ -1,7 +1,7 @@
 package account
 
 import (
-	"bank-api/src/db"
+	"bank-api/src/diplomat/database"
 	"bank-api/tests/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 
 func TestWithdraw(t *testing.T) {
 	testenv.SetupRouter()
-	defer db.InMemory.Reset()
+	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, "Nícolas")
 	testenv.Deposit(t, accountID, 5000)
@@ -41,7 +41,7 @@ func TestWithdraw(t *testing.T) {
 
 func TestConcurrentWithdraw(t *testing.T) {
 	testenv.SetupRouter()
-	defer db.InMemory.Reset()
+	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, "ConcurrentWithdraw")
 	testenv.Deposit(t, accountID, 10000) // R$ 100,00

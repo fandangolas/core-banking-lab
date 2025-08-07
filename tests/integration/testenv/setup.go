@@ -1,8 +1,8 @@
 package testenv
 
 import (
-	"bank-api/src/db"
-	"bank-api/src/routes"
+	"bank-api/src/diplomat/database"
+	"bank-api/src/diplomat/routes"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +17,7 @@ func SetupRouter() *gin.Engine {
 	setupOnce.Do(func() {
 		gin.SetMode(gin.TestMode)
 		router = gin.Default()
-		db.Init()
+		database.Init()
 		routes.RegisterRoutes(router)
 	})
 	return router
