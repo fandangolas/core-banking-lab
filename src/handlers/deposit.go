@@ -31,10 +31,15 @@ func Deposit(c *gin.Context) {
 		return
 	}
 
-	logic.AddAmount(account, req.Amount)
+	if err := logic.AddAmount(account, req.Amount); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	balance := logic.GetBalance(account)
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      account.Id,
-		"balance": account.Balance,
+		"balance": balance,
 	})
 }
