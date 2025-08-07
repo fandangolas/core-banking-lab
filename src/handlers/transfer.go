@@ -18,6 +18,11 @@ func Transfer(c *gin.Context) {
 		return
 	}
 
+	if req.FromID == req.ToID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Não é possível transferir para a mesma conta"})
+		return
+	}
+
 	from, ok := db.InMemory.GetAccount(req.FromID)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Conta de origem não encontrada"})
