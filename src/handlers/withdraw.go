@@ -32,16 +32,18 @@ func Withdraw(c *gin.Context) {
 		return
 	}
 
-	if account.Balance < req.Amount {
+	if err := logic.RemoveAmount(account, req.Amount); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Saldo insuficiente"})
 		return
 	}
 
-	logic.RemoveAmount(account, req.Amount)
+	account.Mu.Lock()
+	balance := account.Balance
+	account.Mu.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Saque realizado com sucesso",
 		"id":      account.Id,
-		"balance": account.Balance,
+		"balance": balance,
 	})
 }
