@@ -63,6 +63,10 @@ func TestConcurrentWithdraw(t *testing.T) {
 			resp := httptest.NewRecorder()
 
 			testenv.SetupRouter().ServeHTTP(resp, req)
+
+			if resp.Code != http.StatusOK {
+				t.Errorf("Erro no saque: %d", resp.Code)
+			}
 		}()
 	}
 
