@@ -38,8 +38,8 @@ func (db *InMemoryDB) CreateAccount(owner string) int {
 }
 
 func (db *InMemoryDB) GetAccount(id int) (*models.Account, bool) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 
 	account, ok := db.accounts[id]
 	return account, ok
