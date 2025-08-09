@@ -111,8 +111,6 @@ func randomOp(ids []int) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	const (
 		numAccounts = 10
 		numOps      = 1200
