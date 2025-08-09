@@ -7,9 +7,9 @@ import (
 
 // RequestMetric stores basic information about an HTTP request.
 type RequestMetric struct {
-	Endpoint string
-	Status   int
-	Duration time.Duration
+	Endpoint string        `json:"endpoint"`
+	Status   int           `json:"status"`
+	Duration time.Duration `json:"duration"`
 }
 
 var (
