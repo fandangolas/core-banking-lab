@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"bank-api/src/diplomat/database"
+	"bank-api/src/diplomat/events"
 	"bank-api/src/domain"
+	"bank-api/src/models"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,6 +43,14 @@ func Withdraw(c *gin.Context) {
 	database.Repo.UpdateAccount(account)
 
 	balance := domain.GetBalance(account)
+
+	events.BrokerInstance.Publish(models.TransactionEvent{
+		Type:      "withdraw",
+		AccountID: account.Id,
+		Amount:    req.Amount,
+		Balance:   balance,
+		Timestamp: time.Now(),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Saque realizado com sucesso",
