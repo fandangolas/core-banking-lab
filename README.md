@@ -32,8 +32,8 @@ Traditional banking APIs often hide the complexity of concurrency control, infra
 |-------------------------------------------|--------------|
 | 1. Architecture & Project Structure       | ✅ Completed  |
 | 2. Advanced Concurrency                   | ✅ Completed  |
-| 3. Testing                                | 🔄 In Progress |
-| 4. Real-Time Simulation                   | 🔲 Planned    |
+| 3. Testing                                | ✅ Completed  |
+| 4. Real-Time Simulation                   | 🔄 In Progress |
 | 5. Observability                          | 🔲 Planned    |
 | 6. Infrastructure & Deployment            | 🔲 Planned    |
 | 7. CI/CD Automation                       | 🔲 Planned    |
