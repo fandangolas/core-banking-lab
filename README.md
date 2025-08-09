@@ -6,6 +6,7 @@
 
 - [Overview](#overview)
 - [Motivation](#motivation)
+- [Architecture Decisions](#architecture-decisions)
 - [Current Status](#current-status)
 - [Roadmap & Next Steps](#roadmap--next-steps)
 - [Requirements](#requirements)
@@ -22,9 +23,13 @@ Core Banking Lab is an engineering sandbox inspired by real-world core banking s
 
 Traditional banking APIs often hide the complexity of concurrency control, infrastructure orchestration, and observability. With Core Banking Lab, you get hands-on experience in:
 
-- **Concurrency**: safe, high-throughput operations across multiple accounts.  
-- **Observability**: real-time metrics, logs, and dashboards.  
+- **Concurrency**: safe, high-throughput operations across multiple accounts.
+- **Observability**: real-time metrics, logs, and dashboards.
 - **Infrastructure**: containerization, Kubernetes, and CI/CD pipelines.
+
+## Architecture Decisions
+
+This project applies a **diplomat-architecture**—a Ports and Adapters style—to separate core business logic from external concerns. The result is clearer organization, easier testability, and smoother scaling as new integrations are added. See [docs/architecture.md](docs/architecture.md) for detailed rationale.
 
 ## Current Status
 
