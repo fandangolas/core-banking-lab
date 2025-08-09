@@ -9,14 +9,14 @@ services:
   simulator:
     build:
       context: .
-      dockerfile: Dockerfile.simulator
+      dockerfile: dev/simulator/Dockerfile
     depends_on:
       - api
     environment:
       BASE_URL: http://api:8080
   dashboard:
     build:
-      context: ./web
+      context: ./dev/dashboard
       dockerfile: Dockerfile
     ports:
       - "5173:5173"
