@@ -14,4 +14,6 @@ func RegisterRoutes(router *gin.Engine) {
 	router.POST("/accounts/:id/withdraw", handlers.Withdraw)
 
 	router.POST("/accounts/transfer", handlers.Transfer)
+
+	router.GET("/events", handlers.Events)
 }

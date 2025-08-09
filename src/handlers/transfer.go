@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"bank-api/src/diplomat/database"
+	"bank-api/src/diplomat/events"
+	"bank-api/src/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -55,6 +58,16 @@ func Transfer(c *gin.Context) {
 
 	database.Repo.UpdateAccount(from)
 	database.Repo.UpdateAccount(to)
+
+	events.BrokerInstance.Publish(models.TransactionEvent{
+		Type:        "transfer",
+		FromID:      from.Id,
+		ToID:        to.Id,
+		Amount:      req.Amount,
+		FromBalance: from.Balance,
+		ToBalance:   to.Balance,
+		Timestamp:   time.Now(),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Transferência realizada com sucesso",
