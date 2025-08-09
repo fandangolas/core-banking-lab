@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bank-api/src/simulator/metrics"
+	"bank-api/src/metrics"
 	"bytes"
 	"encoding/json"
 	"fmt"
