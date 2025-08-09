@@ -1,24 +1,25 @@
 package main
 
 import (
-        "bank-api/src/metrics"
-        "bytes"
-        "encoding/json"
-        "fmt"
-        "log"
-        "net/http"
-        "os"
-        "sync"
-        "time"
+	"bank-api/src/metrics"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"os"
+	"sync"
+	"time"
 )
 
 var baseURL = getenv("BASE_URL", "http://localhost:8080")
 
 func getenv(key, fallback string) string {
-        if v := os.Getenv(key); v != "" {
-                return v
-        }
-        return fallback
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func createAccount(owner string) (int, error) {
@@ -91,30 +92,49 @@ func transfer(from, to, amount int) {
 	metrics.Record(endpoint, status, duration)
 }
 
+func randomOp(ids []int) {
+	switch rand.Intn(3) {
+	case 0:
+		id := ids[rand.Intn(len(ids))]
+		deposit(id, rand.Intn(100)+1)
+	case 1:
+		id := ids[rand.Intn(len(ids))]
+		withdraw(id, rand.Intn(50)+1)
+	case 2:
+		from := ids[rand.Intn(len(ids))]
+		to := ids[rand.Intn(len(ids))]
+		for to == from {
+			to = ids[rand.Intn(len(ids))]
+		}
+		transfer(from, to, rand.Intn(30)+1)
+	}
+}
+
 func main() {
-	ids := make([]int, 0, 2)
-	for _, owner := range []string{"Alice", "Bob"} {
+	const (
+		numAccounts = 10
+		numOps      = 1200
+	)
+
+	ids := make([]int, 0, numAccounts)
+	for i := 0; i < numAccounts; i++ {
+		owner := fmt.Sprintf("User%d", i+1)
 		id, err := createAccount(owner)
 		if err != nil {
 			log.Fatalf("cannot create account %s: %v", owner, err)
 		}
 		ids = append(ids, id)
+		deposit(id, 1000)
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
-		deposit(ids[0], 100)
-	}()
-	go func() {
-		defer wg.Done()
-		withdraw(ids[0], 50)
-	}()
-	go func() {
-		defer wg.Done()
-		transfer(ids[0], ids[1], 25)
-	}()
+	for i := 0; i < numOps; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			randomOp(ids)
+		}()
+	}
 	wg.Wait()
 
 	for _, m := range metrics.List() {

@@ -8,10 +8,14 @@ export default function App() {
     const fetchMetrics = async () => {
       const res = await fetch('/metrics');
       const json = await res.json();
-      const formatted = json.map(m => ({
-        name: m.endpoint,
-        duration: parseFloat(m.duration.replace(/[^0-9.]/g, ''))
-      }));
+      const formatted = json.map(m => {
+        const name = m.endpoint || m.Endpoint;
+        const durStr = String(m.duration || m.Duration || '');
+        return {
+          name,
+          duration: parseFloat(durStr.replace(/[^0-9.]/g, ''))
+        };
+      });
       setData(formatted);
     };
     fetchMetrics();
