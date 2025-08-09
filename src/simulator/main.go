@@ -1,17 +1,25 @@
 package main
 
 import (
-	"bank-api/src/metrics"
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"sync"
-	"time"
+        "bank-api/src/metrics"
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "sync"
+        "time"
 )
 
-const baseURL = "http://localhost:8080"
+var baseURL = getenv("BASE_URL", "http://localhost:8080")
+
+func getenv(key, fallback string) string {
+        if v := os.Getenv(key); v != "" {
+                return v
+        }
+        return fallback
+}
 
 func createAccount(owner string) (int, error) {
 	body, _ := json.Marshal(map[string]string{"owner": owner})
