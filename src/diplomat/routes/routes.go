@@ -9,12 +9,13 @@ import (
 
 func RegisterRoutes(router *gin.Engine) {
 	router.Use(middleware.Metrics())
+  
 	router.POST("/accounts", handlers.CreateAccount)
-
 	router.GET("/accounts/:id/balance", handlers.GetBalance)
 	router.POST("/accounts/:id/deposit", handlers.Deposit)
 	router.POST("/accounts/:id/withdraw", handlers.Withdraw)
-
 	router.POST("/accounts/transfer", handlers.Transfer)
+  
 	router.GET("/metrics", handlers.GetMetrics)
+	router.GET("/events", handlers.Events)
 }
