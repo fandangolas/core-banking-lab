@@ -8,14 +8,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransferToSameAccount(t *testing.T) {
-	testenv.SetupRouter()
+	router := testenv.SetupRouter()
 	defer database.Repo.Reset()
 
-	accountID := testenv.CreateAccount(t, "Self")
-	testenv.Deposit(t, accountID, 1000)
+	accountID := testenv.CreateAccount(t, router, "Self")
+	testenv.Deposit(t, router, accountID, 1000)
 
 	body := map[string]int{
 		"from":   accountID,
@@ -28,15 +31,13 @@ func TestTransferToSameAccount(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
-	testenv.SetupRouter().ServeHTTP(resp, req)
+	router.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("esperado status %d, obtido %d", http.StatusBadRequest, resp.Code)
-	}
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.NotEmpty(t, result["error"])
 
-	balance := testenv.GetBalance(t, accountID)
-	expected := 1000
-	if balance != expected {
-		t.Fatalf("esperado saldo %d, obtido %d", expected, balance)
-	}
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 1000, balance)
 }

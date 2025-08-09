@@ -10,14 +10,17 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWithdraw(t *testing.T) {
-	testenv.SetupRouter()
+	router := testenv.SetupRouter()
 	defer database.Repo.Reset()
 
-	accountID := testenv.CreateAccount(t, "Nícolas")
-	testenv.Deposit(t, accountID, 5000)
+	accountID := testenv.CreateAccount(t, router, "Nícolas")
+	testenv.Deposit(t, router, accountID, 5000)
 
 	body := map[string]int{"amount": 3000}
 	jsonBody, _ := json.Marshal(body)
@@ -26,25 +29,87 @@ func TestWithdraw(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
-	testenv.SetupRouter().ServeHTTP(resp, req)
+	router.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK {
-		t.Fatalf("Erro no saque: %d", resp.Code)
-	}
+	require.Equal(t, http.StatusOK, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.Equal(t, float64(accountID), result["id"])
+	assert.Equal(t, float64(2000), result["balance"])
 
-	balance := testenv.GetBalance(t, accountID)
-	expected := 2000
-	if balance != expected {
-		t.Fatalf("Esperado saldo %d, obtido %d", expected, balance)
-	}
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 2000, balance)
+}
+
+func TestWithdrawInvalidAmount(t *testing.T) {
+	router := testenv.SetupRouter()
+	defer database.Repo.Reset()
+
+	accountID := testenv.CreateAccount(t, router, "Nícolas")
+	testenv.Deposit(t, router, accountID, 500)
+
+	body := map[string]int{"amount": -100}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/accounts/"+strconv.Itoa(accountID)+"/withdraw", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.NotEmpty(t, result["error"])
+}
+
+func TestWithdrawInsufficientBalance(t *testing.T) {
+	router := testenv.SetupRouter()
+	defer database.Repo.Reset()
+
+	accountID := testenv.CreateAccount(t, router, "Nícolas")
+	testenv.Deposit(t, router, accountID, 100)
+
+	body := map[string]int{"amount": 500}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/accounts/"+strconv.Itoa(accountID)+"/withdraw", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusBadRequest, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.NotEmpty(t, result["error"])
+}
+
+func TestWithdrawNonexistentAccount(t *testing.T) {
+	router := testenv.SetupRouter()
+	defer database.Repo.Reset()
+
+	body := map[string]int{"amount": 100}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/accounts/999/withdraw", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusNotFound, resp.Code)
+	var result map[string]interface{}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
+	assert.NotEmpty(t, result["error"])
 }
 
 func TestConcurrentWithdraw(t *testing.T) {
-	testenv.SetupRouter()
+	router := testenv.SetupRouter()
 	defer database.Repo.Reset()
 
-	accountID := testenv.CreateAccount(t, "ConcurrentWithdraw")
-	testenv.Deposit(t, accountID, 10000) // R$ 100,00
+	accountID := testenv.CreateAccount(t, router, "ConcurrentWithdraw")
+	testenv.Deposit(t, router, accountID, 10000) // R$ 100,00
 
 	var wg sync.WaitGroup
 	n := 100
@@ -62,7 +127,7 @@ func TestConcurrentWithdraw(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			resp := httptest.NewRecorder()
 
-			testenv.SetupRouter().ServeHTTP(resp, req)
+			router.ServeHTTP(resp, req)
 
 			if resp.Code != http.StatusOK {
 				t.Errorf("Erro no saque: %d", resp.Code)
@@ -72,7 +137,7 @@ func TestConcurrentWithdraw(t *testing.T) {
 
 	wg.Wait()
 
-	finalBalance := testenv.GetBalance(t, accountID)
+	finalBalance := testenv.GetBalance(t, router, accountID)
 	expected := 0
 
 	if finalBalance != expected {

@@ -7,9 +7,11 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
-func CreateAccount(t *testing.T, owner string) int {
+func CreateAccount(t *testing.T, r *gin.Engine, owner string) int {
 	body := map[string]interface{}{"owner": owner}
 	jsonBody, _ := json.Marshal(body)
 
@@ -17,7 +19,7 @@ func CreateAccount(t *testing.T, owner string) int {
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
-	SetupRouter().ServeHTTP(resp, req)
+	r.ServeHTTP(resp, req)
 
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("erro ao criar conta: %d", resp.Code)
@@ -28,11 +30,11 @@ func CreateAccount(t *testing.T, owner string) int {
 	return int(result["id"].(float64))
 }
 
-func GetBalance(t *testing.T, id int) int {
+func GetBalance(t *testing.T, r *gin.Engine, id int) int {
 	req := httptest.NewRequest("GET", "/accounts/"+strconv.Itoa(id)+"/balance", nil)
 	resp := httptest.NewRecorder()
 
-	SetupRouter().ServeHTTP(resp, req)
+	r.ServeHTTP(resp, req)
 
 	if resp.Code != http.StatusOK {
 		t.Fatalf("erro ao consultar saldo: %d", resp.Code)
@@ -43,7 +45,7 @@ func GetBalance(t *testing.T, id int) int {
 	return int(result["balance"].(float64))
 }
 
-func Deposit(t *testing.T, id int, amount int) {
+func Deposit(t *testing.T, r *gin.Engine, id int, amount int) {
 	body := map[string]int{"amount": amount}
 	jsonBody, _ := json.Marshal(body)
 
@@ -51,7 +53,7 @@ func Deposit(t *testing.T, id int, amount int) {
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
-	SetupRouter().ServeHTTP(resp, req)
+	r.ServeHTTP(resp, req)
 
 	if resp.Code != http.StatusOK {
 		t.Fatalf("erro no depósito: %d", resp.Code)
