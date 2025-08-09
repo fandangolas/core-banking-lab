@@ -87,6 +87,16 @@ go run src/main.go
 ```
 The server will start on `localhost:8080` by default.
 
+### Docker Compose
+
+To run the API, load simulator and web dashboard together:
+
+```bash
+docker-compose up --build
+```
+
+The API is exposed on `localhost:8080` and the dashboard on `http://localhost:5173`.
+
 ## Examples
 
 ### Sequence Diagram
