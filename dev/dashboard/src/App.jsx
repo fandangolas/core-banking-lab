@@ -6,19 +6,113 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
 import { runBatchedSimulation, createAccount, deposit, withdraw, transfer } from './simulator';
 
 const COLORS = [
-  '#8884d8',
-  '#82ca9d',
-  '#ff7300',
-  '#ff0000',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042'
+  '#3b82f6', // blue-500
+  '#10b981', // emerald-500
+  '#f59e0b', // amber-500
+  '#ef4444', // red-500
+  '#8b5cf6', // violet-500
+  '#06b6d4', // cyan-500
+  '#f97316'  // orange-500
 ];
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-lg border border-gray-200 ${className}`}>
+    {children}
+  </div>
+);
+
+const Button = ({ children, onClick, disabled, variant = 'primary', className = '' }) => {
+  const baseClasses = 'px-6 py-2.5 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const variants = {
+    primary: disabled 
+      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+      : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5',
+    secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700 focus:ring-gray-500'
+  };
+  
+  return (
+    <button 
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variants[variant]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Input = ({ label, ...props }) => (
+  <div className="flex flex-col space-y-1">
+    <label className="text-sm font-medium text-gray-700">{label}</label>
+    <input 
+      {...props}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+    />
+  </div>
+);
+
+const Select = ({ label, children, ...props }) => (
+  <div className="flex flex-col space-y-1">
+    <label className="text-sm font-medium text-gray-700">{label}</label>
+    <select 
+      {...props}
+      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+    >
+      {children}
+    </select>
+  </div>
+);
+
+const Checkbox = ({ label, ...props }) => (
+  <label className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+    <input 
+      type="checkbox" 
+      {...props}
+      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50"
+    />
+    <span className="text-sm font-medium text-gray-700">{label}</span>
+  </label>
+);
+
+const ProgressBar = ({ current, total }) => {
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  return (
+    <div className="w-full">
+      <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
+        <span>Progresso</span>
+        <span>{current} / {total} ({Math.round(percentage)}%)</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div 
+          className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const StatCard = ({ title, success, error }) => (
+  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+    <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">{title}</h3>
+    <div className="flex justify-between items-center">
+      <div className="text-center">
+        <div className="text-2xl font-bold text-green-600">{success || 0}</div>
+        <div className="text-xs text-gray-500">Sucessos</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-red-600">{error || 0}</div>
+        <div className="text-xs text-gray-500">Erros</div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [data, setData] = useState([]);
@@ -45,47 +139,51 @@ export default function App() {
 
   useEffect(() => {
     const fetchMetrics = async () => {
-      const res = await fetch('/metrics');
-      const metrics = await res.json();
-      const newMetrics = metrics.slice(lastCount.current);
-      lastCount.current = metrics.length;
+      try {
+        const res = await fetch('/metrics');
+        const metrics = await res.json();
+        const newMetrics = metrics.slice(lastCount.current);
+        lastCount.current = metrics.length;
 
-      if (newMetrics.length === 0) return;
+        if (newMetrics.length === 0) return;
 
-      const now = Date.now();
-      const retentionCutoff = now - 24 * 60 * 60 * 1000; // keep last 24h
-      const newEndpoints = new Set();
+        const now = Date.now();
+        const retentionCutoff = now - 24 * 60 * 60 * 1000; // keep last 24h
+        const newEndpoints = new Set();
 
-      setData(prev => {
-        const filtered = prev.filter(d => d.time >= retentionCutoff);
-        let entry = filtered[filtered.length - 1];
-        if (!entry || now - entry.time >= 1000) {
-          entry = { time: now };
-          filtered.push(entry);
-        }
+        setData(prev => {
+          const filtered = prev.filter(d => d.time >= retentionCutoff);
+          let entry = filtered[filtered.length - 1];
+          if (!entry || now - entry.time >= 1000) {
+            entry = { time: now };
+            filtered.push(entry);
+          }
 
-        newMetrics.forEach(m => {
-          const ep = m.endpoint || m.Endpoint;
-          entry[ep] = (entry[ep] || 0) + 1;
-          newEndpoints.add(ep);
-        });
-
-        // assign colors for new endpoints
-        if (newEndpoints.size > 0) {
-          setColorMap(prevColors => {
-            const updated = { ...prevColors };
-            newEndpoints.forEach(ep => {
-              if (!updated[ep]) {
-                const color = COLORS[Object.keys(updated).length % COLORS.length];
-                updated[ep] = color;
-              }
-            });
-            return updated;
+          newMetrics.forEach(m => {
+            const ep = m.endpoint || m.Endpoint;
+            entry[ep] = (entry[ep] || 0) + 1;
+            newEndpoints.add(ep);
           });
-        }
 
-        return filtered;
-      });
+          // assign colors for new endpoints
+          if (newEndpoints.size > 0) {
+            setColorMap(prevColors => {
+              const updated = { ...prevColors };
+              newEndpoints.forEach(ep => {
+                if (!updated[ep]) {
+                  const color = COLORS[Object.keys(updated).length % COLORS.length];
+                  updated[ep] = color;
+                }
+              });
+              return updated;
+            });
+          }
+
+          return filtered;
+        });
+      } catch (error) {
+        console.error('Erro ao buscar métricas:', error);
+      }
     };
 
     fetchMetrics();
@@ -128,6 +226,7 @@ export default function App() {
       type="monotone"
       dataKey={ep}
       stroke={color}
+      strokeWidth={2}
       dot={false}
       isAnimationActive={false}
     />
@@ -161,7 +260,7 @@ export default function App() {
         try {
           const { id } = await createAccount(`User${Date.now()}_${i}`);
           ids.push(id);
-          await deposit(id, Math.floor(Math.random() * 10000) + 5000); // Saldo inicial entre R$50 e R$150
+          await deposit(id, Math.floor(Math.random() * 10000) + 5000);
         } catch (err) {
           console.error('Erro ao criar conta inicial:', err);
         }
@@ -184,7 +283,6 @@ export default function App() {
           promise = createAccount(username).then(({ id }) => {
             ids.push(id);
             setAccountIds([...ids]);
-            // Adiciona saldo inicial
             const initialAmount = Math.floor(Math.random() * 5000) + 1000;
             return deposit(id, initialAmount);
           });
@@ -262,12 +360,31 @@ export default function App() {
   };
 
   return (
-    <div style={{ width: '100%', height: 400 }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ marginRight: '1rem' }}>
-            Nº de requests:
-            <input
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Core Banking Lab</h1>
+              <p className="text-sm text-gray-600">Dashboard de Simulação e Monitoramento</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className="text-sm text-gray-600">{isRunning ? 'Executando' : 'Inativo'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Configuração de Simulação */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">⚙️ Configuração da Simulação</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Input
+              label="Número de Requests"
               type="number"
               min="1"
               max="100000"
@@ -275,10 +392,8 @@ export default function App() {
               onChange={e => setReqCount(Number(e.target.value))}
               disabled={isRunning}
             />
-          </label>
-          <label style={{ marginRight: '1rem' }}>
-            Tamanho do bloco:
-            <input
+            <Input
+              label="Tamanho do Bloco"
               type="number"
               min="1"
               max="1000"
@@ -286,10 +401,8 @@ export default function App() {
               onChange={e => setBlockSize(Number(e.target.value))}
               disabled={isRunning}
             />
-          </label>
-          <label style={{ marginRight: '1rem' }}>
-            Duração do bloco (ms):
-            <input
+            <Input
+              label="Duração do Bloco (ms)"
               type="number"
               min="100"
               max="10000"
@@ -297,166 +410,154 @@ export default function App() {
               onChange={e => setBlockDuration(Number(e.target.value))}
               disabled={isRunning}
             />
-          </label>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.create}
-              onChange={e => setOps({ ...ops, create: e.target.checked })}
-              disabled={isRunning}
-            />
-            Criar conta
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.deposit}
-              onChange={e => setOps({ ...ops, deposit: e.target.checked })}
-              disabled={isRunning}
-            />
-            Depósito
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.withdraw}
-              onChange={e => setOps({ ...ops, withdraw: e.target.checked })}
-              disabled={isRunning}
-            />
-            Saque
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.transfer}
-              onChange={e => setOps({ ...ops, transfer: e.target.checked })}
-              disabled={isRunning}
-            />
-            Transferência
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={randomOp}
-              onChange={e => setRandomOp(e.target.checked)}
-              disabled={isRunning}
-            />
-            Aleatório (ignora seleções acima)
-          </label>
-          <button 
-            style={{ 
-              marginLeft: '1rem',
-              backgroundColor: isRunning ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: isRunning ? 'not-allowed' : 'pointer'
-            }} 
-            onClick={handleRun}
-            disabled={isRunning}
-          >
-            {isRunning ? 'Executando...' : 'Disparar'}
-          </button>
-        </div>
-        {isRunning && (
-          <div style={{ marginBottom: '1rem' }}>
-            <div>Progresso: {progress.current} / {progress.total}</div>
-            <div style={{ 
-              width: '100%', 
-              height: '20px', 
-              backgroundColor: '#f0f0f0', 
-              borderRadius: '10px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                height: '100%',
-                backgroundColor: '#007bff',
-                transition: 'width 0.3s ease'
-              }} />
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Tipos de Operação</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <Checkbox
+                label="🏦 Criar Conta"
+                checked={ops.create}
+                onChange={e => setOps({ ...ops, create: e.target.checked })}
+                disabled={isRunning}
+              />
+              <Checkbox
+                label="💰 Depósito"
+                checked={ops.deposit}
+                onChange={e => setOps({ ...ops, deposit: e.target.checked })}
+                disabled={isRunning}
+              />
+              <Checkbox
+                label="💸 Saque"
+                checked={ops.withdraw}
+                onChange={e => setOps({ ...ops, withdraw: e.target.checked })}
+                disabled={isRunning}
+              />
+              <Checkbox
+                label="🔄 Transferência"
+                checked={ops.transfer}
+                onChange={e => setOps({ ...ops, transfer: e.target.checked })}
+                disabled={isRunning}
+              />
+              <Checkbox
+                label="🎲 Aleatório"
+                checked={randomOp}
+                onChange={e => setRandomOp(e.target.checked)}
+                disabled={isRunning}
+              />
             </div>
           </div>
+
+          <div className="flex justify-center">
+            <Button
+              onClick={handleRun}
+              disabled={isRunning}
+              className="px-12"
+            >
+              {isRunning ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Executando...</span>
+                </div>
+              ) : (
+                '🚀 Disparar Simulação'
+              )}
+            </Button>
+          </div>
+
+          {isRunning && (
+            <div className="mt-6">
+              <ProgressBar current={progress.current} total={progress.total} />
+            </div>
+          )}
+        </Card>
+
+        {/* Estatísticas */}
+        {Object.keys(endpointStats).length > 0 && (
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">📊 Estatísticas por Endpoint</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(endpointStats).map(([ep, stats]) => (
+                <StatCard
+                  key={ep}
+                  title={ep}
+                  success={stats.success}
+                  error={stats.error}
+                />
+              ))}
+            </div>
+          </Card>
         )}
+
+        {/* Controles do Gráfico */}
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">📈 Monitoramento em Tempo Real</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <Input
+              label="Início"
+              type="time"
+              value={startTime}
+              onChange={e => setStartTime(e.target.value)}
+            />
+            <Input
+              label="Fim"
+              type="time"
+              value={endTime}
+              onChange={e => setEndTime(e.target.value)}
+            />
+            <Select
+              label="Janela de Tempo"
+              value={windowMinutes}
+              onChange={e => setWindowMinutes(Number(e.target.value))}
+            >
+              <option value={1}>1 minuto</option>
+              <option value={5}>5 minutos</option>
+              <option value={10}>10 minutos</option>
+              <option value={30}>30 minutos</option>
+              <option value={60}>1 hora</option>
+            </Select>
+            <Select
+              label="Taxa de Atualização"
+              value={refreshMs}
+              onChange={e => setRefreshMs(Number(e.target.value))}
+            >
+              <option value={1000}>1 segundo</option>
+              <option value={10000}>10 segundos</option>
+              <option value={30000}>30 segundos</option>
+              <option value={60000}>1 minuto</option>
+            </Select>
+          </div>
+
+          {/* Gráfico */}
+          <div className="h-96 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={displayData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="time"
+                  type="number"
+                  domain={[displayStart, displayEnd]}
+                  tickFormatter={t => new Date(t).toLocaleTimeString()}
+                  stroke="#6b7280"
+                />
+                <YAxis allowDecimals={false} stroke="#6b7280" />
+                <Tooltip 
+                  labelFormatter={t => new Date(t).toLocaleTimeString()}
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend />
+                {lines}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
       </div>
-      <div style={{ marginBottom: '1rem' }}>
-        <label>
-          Início:
-          <input
-            type="time"
-            value={startTime}
-            onChange={e => setStartTime(e.target.value)}
-          />
-        </label>
-        <label style={{ marginLeft: '0.5rem' }}>
-          Fim:
-          <input
-            type="time"
-            value={endTime}
-            onChange={e => setEndTime(e.target.value)}
-          />
-        </label>
-        <label style={{ marginLeft: '0.5rem' }}>
-          Faixa:
-          <select
-            value={windowMinutes}
-            onChange={e => setWindowMinutes(Number(e.target.value))}
-          >
-            <option value={1}>1min</option>
-            <option value={5}>5min</option>
-            <option value={10}>10min</option>
-            <option value={30}>30min</option>
-            <option value={60}>1h</option>
-          </select>
-        </label>
-        <label style={{ marginLeft: '0.5rem' }}>
-          Atualização:
-          <select
-            value={refreshMs}
-            onChange={e => setRefreshMs(Number(e.target.value))}
-          >
-            <option value={1000}>1s</option>
-            <option value={10000}>10s</option>
-            <option value={30000}>30s</option>
-            <option value={60000}>1min</option>
-          </select>
-        </label>
-      </div>
-      <div style={{ marginBottom: '1rem' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Endpoint</th>
-              <th>Sucesso</th>
-              <th>Erro</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(endpointStats).map(([ep, c]) => (
-              <tr key={ep}>
-                <td>{ep}</td>
-                <td>{c.success || 0}</td>
-                <td>{c.error || 0}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <LineChart width={800} height={300} data={displayData}>
-        <CartesianGrid stroke="#ccc" />
-        <XAxis
-          dataKey="time"
-          type="number"
-          domain={[displayStart, displayEnd]}
-          tickFormatter={t => new Date(t).toLocaleTimeString()}
-        />
-        <YAxis allowDecimals={false} />
-        <Tooltip labelFormatter={t => new Date(t).toLocaleTimeString()} />
-        <Legend />
-        {lines}
-      </LineChart>
     </div>
   );
 }
