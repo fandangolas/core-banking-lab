@@ -36,7 +36,7 @@ func TestTransferToSameAccount(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.Code)
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
-	assert.NotEmpty(t, result["error"])
+	testenv.AssertHasError(t, result)
 
 	balance := testenv.GetBalance(t, router, accountID)
 	assert.Equal(t, 1000, balance)

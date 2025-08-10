@@ -49,5 +49,5 @@ func TestCreateAccountInvalid(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.Code)
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
-	assert.NotEmpty(t, result["error"])
+	testenv.AssertHasError(t, result)
 }

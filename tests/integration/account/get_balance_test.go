@@ -35,5 +35,5 @@ func TestGetBalanceNonexistentAccount(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.Code)
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
-	assert.NotEmpty(t, result["error"])
+	testenv.AssertHasError(t, result)
 }
