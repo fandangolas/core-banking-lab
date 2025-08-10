@@ -111,41 +111,41 @@ func randomOp(ids []int) {
 }
 
 func main() {
-        rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 
-        const (
-                numAccounts = 100
-                totalOps    = 10000
-                blockSize   = 100
-                blockPause  = 100 * time.Millisecond
-        )
+	const (
+		numAccounts = 100
+		totalOps    = 10000
+		blockSize   = 100
+		blockPause  = 100 * time.Millisecond
+	)
 
-        ids := make([]int, 0, numAccounts)
-        for i := 0; i < numAccounts; i++ {
-                owner := fmt.Sprintf("User%d", i+1)
-                id, err := createAccount(owner)
-                if err != nil {
-                        log.Fatalf("cannot create account %s: %v", owner, err)
-                }
-                ids = append(ids, id)
-                deposit(id, 1000)
-        }
+	ids := make([]int, 0, numAccounts)
+	for i := 0; i < numAccounts; i++ {
+		owner := fmt.Sprintf("User%d", i+1)
+		id, err := createAccount(owner)
+		if err != nil {
+			log.Fatalf("cannot create account %s: %v", owner, err)
+		}
+		ids = append(ids, id)
+		deposit(id, 1000)
+	}
 
-        for sent := 0; sent < totalOps; {
-                var wg sync.WaitGroup
-                for i := 0; i < blockSize && sent < totalOps; i++ {
-                        wg.Add(1)
-                        go func() {
-                                defer wg.Done()
-                                randomOp(ids)
-                        }()
-                        sent++
-                }
-                wg.Wait()
-                time.Sleep(blockPause)
-        }
+	var wg sync.WaitGroup
+	for sent := 0; sent < totalOps; {
+		for i := 0; i < blockSize && sent < totalOps; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				randomOp(ids)
+			}()
+			sent++
+		}
+		time.Sleep(blockPause)
+	}
 
-        for _, m := range metrics.List() {
-                log.Printf("%s status=%d duration=%s", m.Endpoint, m.Status, m.Duration)
-        }
+	wg.Wait()
+	for _, m := range metrics.List() {
+		log.Printf("%s status=%d duration=%s", m.Endpoint, m.Status, m.Duration)
+	}
 }
