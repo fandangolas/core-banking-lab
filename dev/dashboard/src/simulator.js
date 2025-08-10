@@ -45,13 +45,15 @@ export async function transfer(from, to, amount) {
 
 export function runSimulation(totalRequests, {
   requestFn,
-  batchSize = 1,
-  intervalMs = 1000,
+  batchSize,
+  intervalMs = 0,
   onMetric,
 } = {}) {
   if (typeof requestFn !== 'function') {
     throw new Error('requestFn must be provided');
   }
+
+  batchSize = batchSize || totalRequests;
 
   let completed = 0;
   let failed = 0;
@@ -65,59 +67,34 @@ export function runSimulation(totalRequests, {
     }
   };
 
-  const sequential = () => {
-    if (completed + failed >= totalRequests) return;
-    const start = performance.now();
-    requestFn()
-      .then(() => {
-        completed++;
-        emit({ ok: true, duration: performance.now() - start, timestamp: Date.now() });
-        if (completed + failed < totalRequests) {
-          setTimeout(sequential, intervalMs);
-        }
-      })
-      .catch(err => {
-        failed++;
-        emit({ ok: false, error: err.message, duration: performance.now() - start, timestamp: Date.now() });
-        if (completed + failed < totalRequests) {
-          setTimeout(sequential, intervalMs);
-        }
-      });
-  };
+  const runBatch = async () => {
+    const remaining = totalRequests - completed - failed;
+    const count = Math.min(batchSize, remaining);
 
-  const batched = () => {
-    const timer = setInterval(() => {
-      const remaining = totalRequests - completed - failed;
-      const count = Math.min(batchSize, remaining);
-      for (let i = 0; i < count; i++) {
+    await Promise.all(
+      Array.from({ length: count }, () => {
         const start = performance.now();
-        requestFn()
+        return requestFn()
           .then(() => {
             completed++;
             emit({ ok: true, duration: performance.now() - start, timestamp: Date.now() });
-            if (completed + failed >= totalRequests) {
-              clearInterval(timer);
-            }
           })
           .catch(err => {
             failed++;
             emit({ ok: false, error: err.message, duration: performance.now() - start, timestamp: Date.now() });
-            if (completed + failed >= totalRequests) {
-              clearInterval(timer);
-            }
           });
-      }
-      if (completed + failed >= totalRequests) {
-        clearInterval(timer);
-      }
-    }, intervalMs);
+      })
+    );
   };
 
-  if (batchSize === 1) {
-    sequential();
-  } else {
-    batched();
-  }
+  return (async function run() {
+    while (completed + failed < totalRequests) {
+      await runBatch();
+      if (intervalMs > 0 && completed + failed < totalRequests) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+      }
+    }
+  })();
 }
 
 export { BASE_URL };
