@@ -37,6 +37,7 @@ export default function App() {
   });
   const [randomOp, setRandomOp] = useState(false);
   const [accountIds, setAccountIds] = useState([]);
+  const [endpointStats, setEndpointStats] = useState({});
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -149,22 +150,28 @@ export default function App() {
       setAccountIds(ids);
     }
 
-    const requestFn = async () => {
-      const op = randomOp ? selected[Math.floor(Math.random() * selected.length)] : selected[0];
+    const requestFn = () => {
+      const op = randomOp
+        ? selected[Math.floor(Math.random() * selected.length)]
+        : selected[0];
+      let promise;
       switch (op) {
         case 'create': {
-          const { id } = await createAccount(`User${Date.now()}`);
-          ids.push(id);
-          setAccountIds(ids);
-          return;
+          promise = createAccount(`User${Date.now()}`).then(({ id }) => {
+            ids.push(id);
+            setAccountIds(ids);
+          });
+          break;
         }
         case 'deposit': {
           const id = ids[Math.floor(Math.random() * ids.length)];
-          return deposit(id, Math.floor(Math.random() * 100) + 1);
+          promise = deposit(id, Math.floor(Math.random() * 100) + 1);
+          break;
         }
         case 'withdraw': {
           const id = ids[Math.floor(Math.random() * ids.length)];
-          return withdraw(id, Math.floor(Math.random() * 100) + 1);
+          promise = withdraw(id, Math.floor(Math.random() * 100) + 1);
+          break;
         }
         case 'transfer': {
           let from = ids[Math.floor(Math.random() * ids.length)];
@@ -172,11 +179,33 @@ export default function App() {
           while (to === from && ids.length > 1) {
             to = ids[Math.floor(Math.random() * ids.length)];
           }
-          return transfer(from, to, Math.floor(Math.random() * 100) + 1);
+          promise = transfer(from, to, Math.floor(Math.random() * 100) + 1);
+          break;
         }
         default:
-          return Promise.resolve();
+          promise = Promise.resolve();
       }
+      return promise
+        .then(res => {
+          setEndpointStats(prev => ({
+            ...prev,
+            [op]: {
+              success: (prev[op]?.success || 0) + 1,
+              error: prev[op]?.error || 0,
+            },
+          }));
+          return res;
+        })
+        .catch(err => {
+          setEndpointStats(prev => ({
+            ...prev,
+            [op]: {
+              success: prev[op]?.success || 0,
+              error: (prev[op]?.error || 0) + 1,
+            },
+          }));
+          throw err;
+        });
     };
 
     runSimulation(reqCount, { requestFn });
@@ -280,6 +309,26 @@ export default function App() {
             <option value={60000}>1min</option>
           </select>
         </label>
+      </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Sucesso</th>
+              <th>Erro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(endpointStats).map(([ep, c]) => (
+              <tr key={ep}>
+                <td>{ep}</td>
+                <td>{c.success || 0}</td>
+                <td>{c.error || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <LineChart width={800} height={300} data={displayData}>
         <CartesianGrid stroke="#ccc" />
