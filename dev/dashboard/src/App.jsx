@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
+import { runSimulation, createAccount, deposit, withdraw, transfer } from './simulator';
 
 const COLORS = [
   '#8884d8',
@@ -27,6 +28,15 @@ export default function App() {
   const [refreshMs, setRefreshMs] = useState(1000);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [reqCount, setReqCount] = useState(10);
+  const [ops, setOps] = useState({
+    create: false,
+    deposit: false,
+    withdraw: false,
+    transfer: false
+  });
+  const [randomOp, setRandomOp] = useState(false);
+  const [accountIds, setAccountIds] = useState([]);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -118,8 +128,116 @@ export default function App() {
     />
   ));
 
+  const handleRun = async () => {
+    const selected = Object.entries(ops)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+
+    if (selected.length === 0) {
+      alert('Selecione pelo menos uma operação');
+      return;
+    }
+
+    let ids = accountIds.slice();
+
+    if (selected.some(op => op !== 'create') && ids.length < 2) {
+      const { id: id1 } = await createAccount(`User${ids.length + 1}`);
+      const { id: id2 } = await createAccount(`User${ids.length + 2}`);
+      ids.push(id1, id2);
+      await deposit(id1, 1000);
+      await deposit(id2, 1000);
+      setAccountIds(ids);
+    }
+
+    const requestFn = async () => {
+      const op = randomOp ? selected[Math.floor(Math.random() * selected.length)] : selected[0];
+      switch (op) {
+        case 'create': {
+          const { id } = await createAccount(`User${Date.now()}`);
+          ids.push(id);
+          setAccountIds(ids);
+          return;
+        }
+        case 'deposit': {
+          const id = ids[Math.floor(Math.random() * ids.length)];
+          return deposit(id, Math.floor(Math.random() * 100) + 1);
+        }
+        case 'withdraw': {
+          const id = ids[Math.floor(Math.random() * ids.length)];
+          return withdraw(id, Math.floor(Math.random() * 100) + 1);
+        }
+        case 'transfer': {
+          let from = ids[Math.floor(Math.random() * ids.length)];
+          let to = ids[Math.floor(Math.random() * ids.length)];
+          while (to === from && ids.length > 1) {
+            to = ids[Math.floor(Math.random() * ids.length)];
+          }
+          return transfer(from, to, Math.floor(Math.random() * 100) + 1);
+        }
+        default:
+          return Promise.resolve();
+      }
+    };
+
+    runSimulation(reqCount, { requestFn });
+  };
+
   return (
     <div style={{ width: '100%', height: 400 }}>
+      <div style={{ marginBottom: '1rem' }}>
+        <label>
+          Nº de requests:
+          <input
+            type="number"
+            min="1"
+            value={reqCount}
+            onChange={e => setReqCount(Number(e.target.value))}
+          />
+        </label>
+        <label style={{ marginLeft: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={ops.create}
+            onChange={e => setOps({ ...ops, create: e.target.checked })}
+          />
+          Criar conta
+        </label>
+        <label style={{ marginLeft: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={ops.deposit}
+            onChange={e => setOps({ ...ops, deposit: e.target.checked })}
+          />
+          Depósito
+        </label>
+        <label style={{ marginLeft: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={ops.withdraw}
+            onChange={e => setOps({ ...ops, withdraw: e.target.checked })}
+          />
+          Saque
+        </label>
+        <label style={{ marginLeft: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={ops.transfer}
+            onChange={e => setOps({ ...ops, transfer: e.target.checked })}
+          />
+          Transferência
+        </label>
+        <label style={{ marginLeft: '0.5rem' }}>
+          <input
+            type="checkbox"
+            checked={randomOp}
+            onChange={e => setRandomOp(e.target.checked)}
+          />
+          Aleatório
+        </label>
+        <button style={{ marginLeft: '0.5rem' }} onClick={handleRun}>
+          Disparar
+        </button>
+      </div>
       <div style={{ marginBottom: '1rem' }}>
         <label>
           Início:
