@@ -43,4 +43,81 @@ export async function transfer(from, to, amount) {
   });
 }
 
+export function runSimulation(totalRequests, {
+  requestFn,
+  batchSize = 1,
+  intervalMs = 1000,
+  onMetric,
+} = {}) {
+  if (typeof requestFn !== 'function') {
+    throw new Error('requestFn must be provided');
+  }
+
+  let completed = 0;
+  let failed = 0;
+
+  const emit = metric => {
+    onMetric && onMetric(metric);
+    if (metric.error) {
+      console.error('simulation error', metric.error);
+    } else {
+      console.log('simulation metric', metric);
+    }
+  };
+
+  const sequential = () => {
+    if (completed + failed >= totalRequests) return;
+    const start = performance.now();
+    requestFn()
+      .then(() => {
+        completed++;
+        emit({ ok: true, duration: performance.now() - start, timestamp: Date.now() });
+        if (completed + failed < totalRequests) {
+          setTimeout(sequential, intervalMs);
+        }
+      })
+      .catch(err => {
+        failed++;
+        emit({ ok: false, error: err.message, duration: performance.now() - start, timestamp: Date.now() });
+        if (completed + failed < totalRequests) {
+          setTimeout(sequential, intervalMs);
+        }
+      });
+  };
+
+  const batched = () => {
+    const timer = setInterval(() => {
+      const remaining = totalRequests - completed - failed;
+      const count = Math.min(batchSize, remaining);
+      for (let i = 0; i < count; i++) {
+        const start = performance.now();
+        requestFn()
+          .then(() => {
+            completed++;
+            emit({ ok: true, duration: performance.now() - start, timestamp: Date.now() });
+            if (completed + failed >= totalRequests) {
+              clearInterval(timer);
+            }
+          })
+          .catch(err => {
+            failed++;
+            emit({ ok: false, error: err.message, duration: performance.now() - start, timestamp: Date.now() });
+            if (completed + failed >= totalRequests) {
+              clearInterval(timer);
+            }
+          });
+      }
+      if (completed + failed >= totalRequests) {
+        clearInterval(timer);
+      }
+    }, intervalMs);
+  };
+
+  if (batchSize === 1) {
+    sequential();
+  } else {
+    batched();
+  }
+}
+
 export { BASE_URL };
