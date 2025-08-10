@@ -3,7 +3,10 @@ package handlers
 import (
 	"bank-api/src/diplomat/database"
 	"bank-api/src/diplomat/events"
+	"bank-api/src/errors"
+	"bank-api/src/logging"
 	"bank-api/src/models"
+	"bank-api/src/validation"
 	"net/http"
 	"time"
 
@@ -16,25 +19,69 @@ func Transfer(c *gin.Context) {
 		ToID   int `json:"to"`
 		Amount int `json:"amount"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos"})
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiErr := errors.NewValidationError("Invalid request format")
+		logging.Warn("Invalid JSON in transfer request", map[string]interface{}{
+			"error": err.Error(),
+			"ip":    c.ClientIP(),
+		})
+		c.JSON(apiErr.Status, apiErr)
+		return
+	}
+
+	if err := validation.ValidateAmount(req.Amount); err != nil {
+		apiErr := errors.NewInvalidAmountError(err.Error())
+		c.JSON(apiErr.Status, apiErr)
+		return
+	}
+
+	if err := validation.ValidateAccountID(req.FromID); err != nil {
+		apiErr := errors.NewValidationError("Invalid from account ID: " + err.Error())
+		c.JSON(apiErr.Status, apiErr)
+		return
+	}
+
+	if err := validation.ValidateAccountID(req.ToID); err != nil {
+		apiErr := errors.NewValidationError("Invalid to account ID: " + err.Error())
+		c.JSON(apiErr.Status, apiErr)
 		return
 	}
 
 	if req.FromID == req.ToID {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Não é possível transferir para a mesma conta"})
+		apiErr := errors.NewSelfTransferError()
+		logging.Warn("Attempted self-transfer", map[string]interface{}{
+			"account_id": req.FromID,
+			"amount":     req.Amount,
+			"ip":         c.ClientIP(),
+		})
+		c.JSON(apiErr.Status, apiErr)
 		return
 	}
 
 	from, ok := database.Repo.GetAccount(req.FromID)
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Conta de origem não encontrada"})
+		apiErr := errors.NewAccountNotFoundError()
+		logging.Warn("Source account not found", map[string]interface{}{
+			"from_account_id": req.FromID,
+			"to_account_id":   req.ToID,
+			"amount":          req.Amount,
+			"ip":              c.ClientIP(),
+		})
+		c.JSON(apiErr.Status, apiErr)
 		return
 	}
 
 	to, ok := database.Repo.GetAccount(req.ToID)
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Conta de destino não encontrada"})
+		apiErr := errors.NewAccountNotFoundError()
+		logging.Warn("Destination account not found", map[string]interface{}{
+			"from_account_id": req.FromID,
+			"to_account_id":   req.ToID,
+			"amount":          req.Amount,
+			"ip":              c.ClientIP(),
+		})
+		c.JSON(apiErr.Status, apiErr)
 		return
 	}
 
@@ -49,7 +96,15 @@ func Transfer(c *gin.Context) {
 	defer to.Mu.Unlock()
 
 	if from.Balance < req.Amount {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Saldo insuficiente na conta de origem"})
+		apiErr := errors.NewInsufficientFundsError()
+		logging.Warn("Transfer failed: insufficient funds", map[string]interface{}{
+			"from_account_id": req.FromID,
+			"to_account_id":   req.ToID,
+			"amount":          req.Amount,
+			"current_balance": from.Balance,
+			"ip":              c.ClientIP(),
+		})
+		c.JSON(apiErr.Status, apiErr)
 		return
 	}
 

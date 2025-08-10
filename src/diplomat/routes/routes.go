@@ -8,7 +8,6 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine) {
-	router.Use(middleware.CORS())
 	router.Use(middleware.Metrics())
 
 	router.POST("/accounts", handlers.CreateAccount)

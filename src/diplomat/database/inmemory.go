@@ -44,10 +44,11 @@ func (db *InMemory) GetAccount(id int) (*models.Account, bool) {
 }
 
 func (db *InMemory) UpdateAccount(acc *models.Account) {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	db.accounts[acc.Id] = acc
+	// Note: This method is actually not needed since we work with 
+	// pointers to the accounts directly. The mutex locks in domain
+	// layer already protect concurrent access to account fields.
+	// This is kept for interface compliance but doesn't need to do anything
+	// as we're modifying the same account reference that's in the map.
 }
 
 func (db *InMemory) Reset() {

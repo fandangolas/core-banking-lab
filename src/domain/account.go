@@ -2,6 +2,7 @@ package domain
 
 import (
 	"bank-api/src/models"
+	"bank-api/src/validation"
 	"errors"
 )
 
@@ -12,8 +13,8 @@ func withAccountLock(acc *models.Account, fn func()) {
 }
 
 func AddAmount(acc *models.Account, amount int) error {
-	if amount <= 0 {
-		return errors.New("invalid amount")
+	if err := validation.ValidateAmount(amount); err != nil {
+		return err
 	}
 
 	withAccountLock(acc, func() {
@@ -24,14 +25,14 @@ func AddAmount(acc *models.Account, amount int) error {
 }
 
 func RemoveAmount(acc *models.Account, amount int) error {
-	if amount <= 0 {
-		return errors.New("invalid amount")
+	if err := validation.ValidateAmount(amount); err != nil {
+		return err
 	}
 
 	var err error
 	withAccountLock(acc, func() {
 		if acc.Balance-amount < 0 {
-			err = errors.New("invalid amount, greater than balance")
+			err = errors.New("insufficient balance")
 			return
 		}
 
