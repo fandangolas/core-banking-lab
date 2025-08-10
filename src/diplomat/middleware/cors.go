@@ -1,20 +1,28 @@
 package middleware
 
 import (
-	"time"
+	"net/http"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-// CORS configures cross-origin resource sharing.
+// CORS adds Cross-Origin Resource Sharing headers to each response
+// allowing the dashboard to communicate with the API from another origin.
 func CORS() gin.HandlerFunc {
-	return cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	})
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Content-Type, Content-Length, Authorization, Accept, X-Requested-With",
+		)
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, PATCH, OPTIONS")
+
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
 }
