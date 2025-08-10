@@ -260,7 +260,7 @@ export default function App() {
         try {
           const { id } = await createAccount(`User${Date.now()}_${i}`);
           ids.push(id);
-          await deposit(id, Math.floor(Math.random() * 10000) + 5000); // Saldo inicial entre R$50 e R$150
+          await deposit(id, Math.floor(Math.random() * 10000) + 5000);
         } catch (err) {
           console.error('Erro ao criar conta inicial:', err);
         }
@@ -283,7 +283,6 @@ export default function App() {
           promise = createAccount(username).then(({ id }) => {
             ids.push(id);
             setAccountIds([...ids]);
-            // Adiciona saldo inicial
             const initialAmount = Math.floor(Math.random() * 5000) + 1000;
             return deposit(id, initialAmount);
           });
@@ -361,124 +360,21 @@ export default function App() {
   };
 
   return (
-    <div style={{ width: '100%', height: 400 }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ marginRight: '1rem' }}>
-            Nº de requests:
-            <input
-              type="number"
-              min="1"
-              max="100000"
-              value={reqCount}
-              onChange={e => setReqCount(Number(e.target.value))}
-              disabled={isRunning}
-            />
-          </label>
-          <label style={{ marginRight: '1rem' }}>
-            Tamanho do bloco:
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              value={blockSize}
-              onChange={e => setBlockSize(Number(e.target.value))}
-              disabled={isRunning}
-            />
-          </label>
-          <label style={{ marginRight: '1rem' }}>
-            Duração do bloco (ms):
-            <input
-              type="number"
-              min="100"
-              max="10000"
-              value={blockDuration}
-              onChange={e => setBlockDuration(Number(e.target.value))}
-              disabled={isRunning}
-            />
-          </label>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.create}
-              onChange={e => setOps({ ...ops, create: e.target.checked })}
-              disabled={isRunning}
-            />
-            Criar conta
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.deposit}
-              onChange={e => setOps({ ...ops, deposit: e.target.checked })}
-              disabled={isRunning}
-            />
-            Depósito
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.withdraw}
-              onChange={e => setOps({ ...ops, withdraw: e.target.checked })}
-              disabled={isRunning}
-            />
-            Saque
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={ops.transfer}
-              onChange={e => setOps({ ...ops, transfer: e.target.checked })}
-              disabled={isRunning}
-            />
-            Transferência
-          </label>
-          <label style={{ marginRight: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={randomOp}
-              onChange={e => setRandomOp(e.target.checked)}
-              disabled={isRunning}
-            />
-            Aleatório (ignora seleções acima)
-          </label>
-          <button 
-            style={{ 
-              marginLeft: '1rem',
-              backgroundColor: isRunning ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: isRunning ? 'not-allowed' : 'pointer'
-            }} 
-            onClick={handleRun}
-            disabled={isRunning}
-          >
-            {isRunning ? 'Executando...' : 'Disparar'}
-          </button>
-        </div>
-        {isRunning && (
-          <div style={{ marginBottom: '1rem' }}>
-            <div>Progresso: {progress.current} / {progress.total}</div>
-            <div style={{ 
-              width: '100%', 
-              height: '20px', 
-              backgroundColor: '#f0f0f0', 
-              borderRadius: '10px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                height: '100%',
-                backgroundColor: '#007bff',
-                transition: 'width 0.3s ease'
-              }} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Core Banking Lab</h1>
+              <p className="text-sm text-gray-600">Dashboard de Simulação e Monitoramento</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className="text-sm text-gray-600">{isRunning ? 'Executando' : 'Inativo'}</span>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
