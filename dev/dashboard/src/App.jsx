@@ -74,7 +74,7 @@ const Checkbox = ({ label, ...props }) => (
     <input 
       type="checkbox" 
       {...props}
-      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50"
+      className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50"
     />
     <span className="text-sm font-medium text-gray-700">{label}</span>
   </label>
@@ -136,6 +136,7 @@ export default function App() {
   const [endpointStats, setEndpointStats] = useState({});
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [abortController, setAbortController] = useState(null);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -247,115 +248,137 @@ export default function App() {
       return;
     }
 
+    const controller = new AbortController();
+    setAbortController(controller);
     setIsRunning(true);
     setProgress({ current: 0, total: reqCount });
 
     let ids = accountIds.slice();
 
-    // Garante que temos pelo menos algumas contas criadas para operações que não sejam create
-    const needsAccounts = randomOp || selected.some(op => op !== 'create');
-    if (needsAccounts && ids.length < 10) {
-      console.log('Criando contas iniciais...');
-      for (let i = ids.length; i < 10; i++) {
-        try {
-          const { id } = await createAccount(`User${Date.now()}_${i}`);
-          ids.push(id);
-          await deposit(id, Math.floor(Math.random() * 10000) + 5000);
-        } catch (err) {
-          console.error('Erro ao criar conta inicial:', err);
-        }
-      }
-      setAccountIds(ids);
-    }
-
-    const requestFn = () => {
-      let selectedOps = selected;
-      if (randomOp) {
-        selectedOps = ['create', 'deposit', 'withdraw', 'transfer'];
-      }
-      
-      const op = selectedOps[Math.floor(Math.random() * selectedOps.length)];
-      let promise;
-      
-      switch (op) {
-        case 'create': {
-          const username = `User${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-          promise = createAccount(username).then(({ id }) => {
-            ids.push(id);
-            setAccountIds([...ids]);
-            const initialAmount = Math.floor(Math.random() * 5000) + 1000;
-            return deposit(id, initialAmount);
-          });
-          break;
-        }
-        case 'deposit': {
-          if (ids.length === 0) return Promise.resolve();
-          const id = ids[Math.floor(Math.random() * ids.length)];
-          const amount = Math.floor(Math.random() * 1000) + 100;
-          promise = deposit(id, amount);
-          break;
-        }
-        case 'withdraw': {
-          if (ids.length === 0) return Promise.resolve();
-          const id = ids[Math.floor(Math.random() * ids.length)];
-          const amount = Math.floor(Math.random() * 500) + 50;
-          promise = withdraw(id, amount);
-          break;
-        }
-        case 'transfer': {
-          if (ids.length < 2) return Promise.resolve();
-          let from = ids[Math.floor(Math.random() * ids.length)];
-          let to = ids[Math.floor(Math.random() * ids.length)];
-          while (to === from && ids.length > 1) {
-            to = ids[Math.floor(Math.random() * ids.length)];
-          }
-          const amount = Math.floor(Math.random() * 300) + 10;
-          promise = transfer(from, to, amount);
-          break;
-        }
-        default:
-          promise = Promise.resolve();
-      }
-      
-      return promise
-        .then(res => {
-          setEndpointStats(prev => ({
-            ...prev,
-            [op]: {
-              success: (prev[op]?.success || 0) + 1,
-              error: prev[op]?.error || 0,
-            },
-          }));
-          setProgress(prev => ({ ...prev, current: prev.current + 1 }));
-          return res;
-        })
-        .catch(err => {
-          setEndpointStats(prev => ({
-            ...prev,
-            [op]: {
-              success: prev[op]?.success || 0,
-              error: (prev[op]?.error || 0) + 1,
-            },
-          }));
-          setProgress(prev => ({ ...prev, current: prev.current + 1 }));
-          console.error(`Erro na operação ${op}:`, err);
-          throw err;
-        });
-    };
-
     try {
+      // Garante que temos pelo menos algumas contas criadas para operações que não sejam create
+      const needsAccounts = randomOp || selected.some(op => op !== 'create');
+      if (needsAccounts && ids.length < 10) {
+        console.log('Criando contas iniciais...');
+        for (let i = ids.length; i < 10; i++) {
+          if (controller.signal.aborted) return;
+          
+          try {
+            const { id } = await createAccount(`User${Date.now()}_${i}`);
+            ids.push(id);
+            await deposit(id, Math.floor(Math.random() * 10000) + 5000);
+          } catch (err) {
+            console.error('Erro ao criar conta inicial:', err);
+          }
+        }
+        setAccountIds(ids);
+      }
+
+      const requestFn = () => {
+        if (controller.signal.aborted) {
+          return Promise.reject(new Error('Abortado pelo usuário'));
+        }
+
+        let selectedOps = selected;
+        if (randomOp) {
+          selectedOps = ['create', 'deposit', 'withdraw', 'transfer'];
+        }
+        
+        const op = selectedOps[Math.floor(Math.random() * selectedOps.length)];
+        let promise;
+        
+        switch (op) {
+          case 'create': {
+            const username = `User${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+            promise = createAccount(username).then(({ id }) => {
+              ids.push(id);
+              setAccountIds([...ids]);
+              const initialAmount = Math.floor(Math.random() * 5000) + 1000;
+              return deposit(id, initialAmount);
+            });
+            break;
+          }
+          case 'deposit': {
+            if (ids.length === 0) return Promise.resolve();
+            const id = ids[Math.floor(Math.random() * ids.length)];
+            const amount = Math.floor(Math.random() * 1000) + 100;
+            promise = deposit(id, amount);
+            break;
+          }
+          case 'withdraw': {
+            if (ids.length === 0) return Promise.resolve();
+            const id = ids[Math.floor(Math.random() * ids.length)];
+            const amount = Math.floor(Math.random() * 500) + 50;
+            promise = withdraw(id, amount);
+            break;
+          }
+          case 'transfer': {
+            if (ids.length < 2) return Promise.resolve();
+            let from = ids[Math.floor(Math.random() * ids.length)];
+            let to = ids[Math.floor(Math.random() * ids.length)];
+            while (to === from && ids.length > 1) {
+              to = ids[Math.floor(Math.random() * ids.length)];
+            }
+            const amount = Math.floor(Math.random() * 300) + 10;
+            promise = transfer(from, to, amount);
+            break;
+          }
+          default:
+            promise = Promise.resolve();
+        }
+        
+        return promise
+          .then(res => {
+            setEndpointStats(prev => ({
+              ...prev,
+              [op]: {
+                success: (prev[op]?.success || 0) + 1,
+                error: prev[op]?.error || 0,
+              },
+            }));
+            setProgress(prev => ({ ...prev, current: prev.current + 1 }));
+            return res;
+          })
+          .catch(err => {
+            if (err.message === 'Abortado pelo usuário') throw err;
+            
+            setEndpointStats(prev => ({
+              ...prev,
+              [op]: {
+                success: prev[op]?.success || 0,
+                error: (prev[op]?.error || 0) + 1,
+              },
+            }));
+            setProgress(prev => ({ ...prev, current: prev.current + 1 }));
+            console.error(`Erro na operação ${op}:`, err);
+            throw err;
+          });
+      };
+
       await runBatchedSimulation(reqCount, {
         requestFn,
         blockSize,
         blockDuration,
+        abortSignal: controller.signal,
         onProgress: (current, total) => {
           setProgress({ current, total });
         }
       });
     } catch (error) {
-      console.error('Erro na simulação:', error);
+      if (error.message !== 'Abortado pelo usuário') {
+        console.error('Erro na simulação:', error);
+      }
     } finally {
       setIsRunning(false);
+      setAbortController(null);
+    }
+  };
+
+  const handleStop = () => {
+    if (abortController) {
+      abortController.abort();
+      setIsRunning(false);
+      setAbortController(null);
     }
   };
 
@@ -448,7 +471,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center space-x-4">
             <Button
               onClick={handleRun}
               disabled={isRunning}
@@ -463,6 +486,16 @@ export default function App() {
                 '🚀 Disparar Simulação'
               )}
             </Button>
+            
+            {isRunning && (
+              <Button
+                onClick={handleStop}
+                variant="secondary"
+                className="px-8 bg-red-100 hover:bg-red-200 text-red-700"
+              >
+                ⏹️ Parar
+              </Button>
+            )}
           </div>
 
           {isRunning && (

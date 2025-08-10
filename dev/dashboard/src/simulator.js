@@ -126,6 +126,7 @@ export async function runBatchedSimulation(totalRequests, {
   requestFn,
   blockSize = 500,
   blockDuration = 2000, // 2 segundos
+  abortSignal,
   onProgress,
   onMetric,
 } = {}) {
@@ -157,6 +158,11 @@ export async function runBatchedSimulation(totalRequests, {
 
   // Loop principal que replica a lógica do Go
   for (let sent = 0; sent < totalRequests;) {
+    // Verifica se foi cancelado
+    if (abortSignal && abortSignal.aborted) {
+      throw new Error('Abortado pelo usuário');
+    }
+
     const n = opsThisBlock(sent, totalRequests, blockSize);
     console.log(`Executando bloco: ${n} requests (${sent + 1}-${sent + n} de ${totalRequests})`);
     
@@ -170,6 +176,12 @@ export async function runBatchedSimulation(totalRequests, {
       // Agenda cada request com o intervalo apropriado
       const requestPromise = new Promise((resolve) => {
         setTimeout(async () => {
+          // Verifica novamente se foi cancelado
+          if (abortSignal && abortSignal.aborted) {
+            resolve();
+            return;
+          }
+
           const start = performance.now();
           try {
             await requestFn();
@@ -182,6 +194,10 @@ export async function runBatchedSimulation(totalRequests, {
             onProgress && onProgress(completed + failed, totalRequests);
             resolve();
           } catch (err) {
+            if (err.message === 'Abortado pelo usuário') {
+              resolve();
+              return;
+            }
             failed++;
             emit({ 
               ok: false, 
@@ -203,6 +219,11 @@ export async function runBatchedSimulation(totalRequests, {
     
     sent += n;
     console.log(`Bloco concluído. Total processado: ${completed + failed}/${totalRequests}`);
+
+    // Verifica se foi cancelado após o bloco
+    if (abortSignal && abortSignal.aborted) {
+      throw new Error('Abortado pelo usuário');
+    }
   }
 
   console.log(`Simulação concluída. Sucessos: ${completed}, Falhas: ${failed}`);
