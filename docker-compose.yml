@@ -6,14 +6,6 @@ services:
       dockerfile: Dockerfile.api
     ports:
       - "8080:8080"
-  simulator:
-    build:
-      context: .
-      dockerfile: dev/simulator/Dockerfile
-    depends_on:
-      - api
-    environment:
-      BASE_URL: http://api:8080
   dashboard:
     build:
       context: ./dev/dashboard
