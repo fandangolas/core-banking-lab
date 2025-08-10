@@ -114,10 +114,9 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	const (
-		numAccounts = 100
-		totalOps    = 10000
-		blockSize   = 100
-		blockPause  = 100 * time.Millisecond
+		numAccounts = 1000
+		totalOps    = 100000
+		blockSize   = 500
 	)
 
 	ids := make([]int, 0, numAccounts)
@@ -131,20 +130,37 @@ func main() {
 		deposit(id, 1000)
 	}
 
-	var wg sync.WaitGroup
-	for sent := 0; sent < totalOps; {
-		for i := 0; i < blockSize && sent < totalOps; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				randomOp(ids)
-			}()
-			sent++
+	opsThisBlock := func(sent, total, block int) int {
+		if total-sent < block {
+			return total - sent
 		}
-		time.Sleep(blockPause)
+
+		return block
 	}
 
-	wg.Wait()
+	blockDuration := 2 * time.Second
+	for sent := 0; sent < totalOps; {
+		n := opsThisBlock(sent, totalOps, blockSize)
+
+		interval := blockDuration / time.Duration(n)
+		ticker := time.NewTicker(interval)
+
+		var wgBlock sync.WaitGroup
+		wgBlock.Add(n)
+
+		for i := 0; i < n; i++ {
+			<-ticker.C
+			go func() {
+				defer wgBlock.Done()
+				randomOp(ids)
+			}()
+		}
+
+		wgBlock.Wait()
+		ticker.Stop()
+		sent += n
+	}
+
 	for _, m := range metrics.List() {
 		log.Printf("%s status=%d duration=%s", m.Endpoint, m.Status, m.Duration)
 	}
