@@ -1,46 +1,69 @@
 # Architecture Overview
 
-**Clean, concurrent banking system built with production-grade patterns and thread-safe operations.**
+**Clean, concurrent banking system built with the Diplomat pattern for maintainable and testable code.**
 
 ## Diplomat Architecture Pattern
 
-This system implements a **Diplomat Architecture**—an enhanced Ports & Adapters pattern optimized for concurrent operations:
+The system follows **Diplomat Architecture** with clear separation of concerns and data flow:
 
 ```
-┌──────────────┐    ┌─────────────┐    ┌─────────────┐
-│  HTTP Layer  │◄──►│ Domain Layer│◄──►│Infrastructure│
-│              │    │             │    │             │
-│ • Gin Router │    │ • Business  │    │ • Database  │
-│ • Validation │    │   Logic     │    │ • Events    │
-│ • Rate Limit │    │ • Concurrency│    │ • Metrics   │
-│ • Security   │    │ • Transfers │    │ • Config    │
-└──────────────┘    └─────────────┘    └─────────────┘
+┌─────────────┐    ┌─────────────┐    ┌──────────────┐
+│   Handlers  │───►│   Domain    │◄───│  Diplomats   │
+│(Application)│    │ (Business)  │    │(External I/O)│
+└─────────────┘    └─────────────┘    └──────────────┘
+       │                   │                   │
+   Orchestrate         Pure Logic         I/O Operations
+   Coordinate          100% Tested        Database/HTTP/Events
+   Data Flow           Isolated           Send data outside
 ```
 
-**Why This Pattern?**
-- **Testable**: Each layer can be mocked and tested independently
-- **Concurrent-Safe**: Clear boundaries prevent race conditions
-- **Technology-Independent**: Business logic isolated from frameworks
-- **Extensible**: Add new interfaces without changing core logic
+### Layer Responsibilities
+
+**🎯 Domain Layer** (`domain/`)
+- **Pure business logic**: Account operations, transfer rules, validations
+- **100% testable**: No external dependencies, only business rules
+- **Thread-safe**: Per-account mutexes with deadlock prevention
+
+**🎛️ Application Layer** (`handlers/`)  
+- **Orchestrates** domain operations and coordinates data flow
+- **Transforms** HTTP requests into domain operations
+- **Returns** domain results via adapters to external world
+
+**🌐 Diplomat Layer** (`diplomat/`)
+- **Manages all external I/O**: Database, HTTP, events, metrics
+- **Data adapters**: Transform models between internal domain and external systems
+- **Infrastructure**: Rate limiting, CORS, logging, configuration
+
+### Data Flow
+
+```
+HTTP Request → Handler → Domain Logic → Handler → Diplomat → External System
+     ↑            ↓            ↓           ↓         ↓           ↓
+   JSON       Orchestrate   Business    Adapter   Database   Response
+  Parsing     Operations     Rules      Transform   Query     JSON
+```
+
+**Inside→Outside**: Domain models transformed via adapters for external systems  
+**Outside→Inside**: External data adapted into clean domain models
 
 ## Concurrency Design
 
-### Thread-Safe Operations
-Each account has its own mutex, enabling concurrent operations on different accounts while protecting individual account state:
+### Per-Account Thread Safety
+Each account has its own mutex for fine-grained locking:
 
 ```go
 type Account struct {
     Id      int
     Balance int
-    Mu      sync.Mutex  // Per-account concurrency control
+    Mu      sync.Mutex  // Per-account protection
 }
 ```
 
 ### Deadlock Prevention
-Transfers use **ordered locking** to prevent deadlocks when multiple goroutines transfer between the same accounts:
+Ordered locking algorithm prevents deadlocks in transfers:
 
 ```go
-// Always lock accounts in consistent order (by ID)
+// Always lock in consistent order (by account ID)
 if fromAccount.Id < toAccount.Id {
     fromAccount.Mu.Lock()
     toAccount.Mu.Lock()
@@ -48,73 +71,13 @@ if fromAccount.Id < toAccount.Id {
     toAccount.Mu.Lock()
     fromAccount.Mu.Lock()
 }
-defer fromAccount.Mu.Unlock()
-defer toAccount.Mu.Unlock()
-
-// Atomic balance updates
-fromAccount.Balance -= amount
-toAccount.Balance += amount
 ```
 
-**Result**: Thousands of concurrent transfers execute safely without deadlocks or data races.
-
-## Layer Responsibilities
-
-### HTTP Layer (`handlers/`)
-- Request routing and parameter extraction
-- Input validation and rate limiting
-- Security enforcement (CORS, authentication)
-- Structured error responses with audit logging
-
-### Domain Layer (`domain/`)
-- Core banking business rules
-- Thread-safe account operations
-- Atomic transaction processing
-- Concurrency control algorithms
-
-### Infrastructure Layer (`diplomat/`)
-- Repository pattern for data persistence
-- Event publishing for real-time updates
-- Metrics collection and monitoring
-- Configuration management
-
-## Security Architecture
-
-**Defense in Depth:**
-
-1. **Perimeter**: Rate limiting (100 req/min per IP, configurable)
-2. **Input**: Comprehensive validation and sanitization  
-3. **Business Logic**: Amount limits, account existence checks
-4. **Audit**: Complete transaction logging for forensics
-5. **Errors**: No sensitive data exposure in error messages
-
-## Real-Time Features
-
-**Event-Driven Updates:**
-```go
-type EventBroker struct {
-    subscribers []chan TransactionEvent
-    mutex       sync.RWMutex
-}
-
-// Non-blocking event publishing
-func (eb *EventBroker) Publish(event TransactionEvent) {
-    for _, subscriber := range eb.subscribers {
-        select {
-        case subscriber <- event:
-            // Event delivered to dashboard
-        default:
-            // Skip slow subscribers (no blocking)
-        }
-    }
-}
-```
-
-Dashboard receives live transaction updates via WebSocket without impacting API performance.
+**Result**: Zero deadlocks across thousands of concurrent operations.
 
 ## Repository Pattern
 
-Interface-based design enables easy database migration:
+Interface-based data access enables easy testing and database migration:
 
 ```go
 type Repository interface {
@@ -123,39 +86,19 @@ type Repository interface {
     UpdateAccount(acc *Account)
 }
 
-// Current: In-memory for development
+// Current: In-memory (development)
 type InMemory struct { ... }
 
-// Future: PostgreSQL for production
+// Future: PostgreSQL (production)
 type PostgreSQL struct { ... }
 ```
 
-## Key Design Decisions
+## Key Benefits
 
-### **Why Ordered Locking?**
-Traditional approaches like global locks would kill performance. Per-account locks with consistent ordering provides both safety and scalability.
+✅ **Testable**: Domain logic tested independently from I/O  
+✅ **Maintainable**: Clear layer boundaries and responsibilities  
+✅ **Concurrent**: Thread-safe operations with zero deadlocks  
+✅ **Extensible**: Add new databases/APIs without changing business logic  
+✅ **Technology-Independent**: Domain survives framework changes  
 
-### **Why Repository Pattern?**
-Enables testing with mock databases and future migration to PostgreSQL without changing business logic.
-
-### **Why Event-Driven Updates?**  
-Decouples real-time features from core banking operations—dashboard updates don't slow down transfers.
-
-### **Why Diplomat Pattern?**
-Provides clean separation while maintaining the tight integration needed for financial systems.
-
-## Performance Characteristics
-
-- **Lock Granularity**: Per-account (minimal contention)
-- **Lock Duration**: Microseconds (only during balance updates)
-- **Deadlock Risk**: Zero (ordered locking eliminates circular waits)
-- **Scalability**: Linear with number of accounts
-
-## Technology Stack
-
-- **Go**: Native concurrency with goroutines and channels
-- **Gin**: High-performance HTTP router with middleware
-- **Testify**: Comprehensive testing with concurrent scenarios
-- **Docker**: Container orchestration and deployment
-
-This architecture demonstrates production-grade patterns for building reliable, concurrent financial systems in Go.
+This architecture demonstrates production-grade system design with proper separation of concerns, comprehensive testing strategies, and advanced concurrency patterns.

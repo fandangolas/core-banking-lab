@@ -179,10 +179,4 @@ curl http://localhost:8080/accounts/2/balance  # → {"balance": 3000}
 - Non-blocking event publishing (won't slow API)
 - Automatic connection handling and cleanup
 
-### **Performance**
-- **Account creation**: ~0.3ms average
-- **Balance query**: ~0.1ms average  
-- **Transfer**: ~1.2ms average
-- **Concurrent transfers**: No performance degradation
-
 All amounts are in **centavos** (1/100 of Brazilian Real). Example: `10000` = R$ 100.00
