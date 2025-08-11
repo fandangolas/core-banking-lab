@@ -4,6 +4,7 @@ import (
 	"bank-api/src/diplomat/database"
 	"bank-api/src/diplomat/events"
 	"bank-api/src/domain"
+	"bank-api/src/metrics"
 	"bank-api/src/models"
 	"net/http"
 	"strconv"
@@ -35,6 +36,8 @@ func Deposit(c *gin.Context) {
 	}
 
 	if err := domain.AddAmount(account, req.Amount); err != nil {
+		// Record failed operation
+		metrics.RecordBankingOperation("deposit", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -42,6 +45,10 @@ func Deposit(c *gin.Context) {
 	database.Repo.UpdateAccount(account)
 
 	balance := domain.GetBalance(account)
+	
+	// Record successful operation and metrics
+	metrics.RecordBankingOperation("deposit", "success")
+	metrics.RecordAccountBalance(float64(balance))
 
 	events.BrokerInstance.Publish(models.TransactionEvent{
 		Type:      "deposit",

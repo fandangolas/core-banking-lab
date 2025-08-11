@@ -9,6 +9,7 @@ import (
 
 func RegisterRoutes(router *gin.Engine) {
 	router.Use(middleware.Metrics())
+	router.Use(middleware.PrometheusMiddleware()) // Add Prometheus metrics collection
 
 	router.POST("/accounts", handlers.CreateAccount)
 	router.GET("/accounts/:id/balance", handlers.GetBalance)
@@ -16,6 +17,9 @@ func RegisterRoutes(router *gin.Engine) {
 	router.POST("/accounts/:id/withdraw", handlers.Withdraw)
 	router.POST("/accounts/transfer", handlers.Transfer)
 
+	// Keep original metrics endpoint for compatibility
 	router.GET("/metrics", handlers.GetMetrics)
+	// Add Prometheus metrics endpoint
+	router.GET("/prometheus", handlers.PrometheusMetrics)
 	router.GET("/events", handlers.Events)
 }

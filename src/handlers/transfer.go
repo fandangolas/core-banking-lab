@@ -5,6 +5,7 @@ import (
 	"bank-api/src/diplomat/events"
 	"bank-api/src/errors"
 	"bank-api/src/logging"
+	"bank-api/src/metrics"
 	"bank-api/src/models"
 	"bank-api/src/validation"
 	"net/http"
@@ -104,6 +105,8 @@ func Transfer(c *gin.Context) {
 			"current_balance": from.Balance,
 			"ip":              c.ClientIP(),
 		})
+		// Record failed operation
+		metrics.RecordBankingOperation("transfer", "error")
 		c.JSON(apiErr.Status, apiErr)
 		return
 	}
@@ -113,6 +116,12 @@ func Transfer(c *gin.Context) {
 
 	database.Repo.UpdateAccount(from)
 	database.Repo.UpdateAccount(to)
+
+	// Record successful operation and metrics
+	metrics.RecordBankingOperation("transfer", "success")
+	metrics.RecordTransferAmount(float64(req.Amount))
+	metrics.RecordAccountBalance(float64(from.Balance))
+	metrics.RecordAccountBalance(float64(to.Balance))
 
 	events.BrokerInstance.Publish(models.TransactionEvent{
 		Type:        "transfer",
