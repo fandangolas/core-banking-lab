@@ -5,6 +5,7 @@ import (
 	"bank-api/src/domain"
 	"bank-api/src/errors"
 	"bank-api/src/logging"
+	"bank-api/src/metrics"
 	"bank-api/src/validation"
 	"net/http"
 	"strconv"
@@ -39,6 +40,10 @@ func CreateAccount(ctx *gin.Context) {
 	}
 
 	id := database.Repo.CreateAccount(req.Owner)
+	
+	// Record metrics
+	metrics.RecordAccountCreation()
+	metrics.UpdateActiveAccounts(float64(database.Repo.(*database.InMemory).GetAccountCount()))
 	
 	logging.Info("Account created successfully", map[string]interface{}{
 		"account_id": id,
@@ -81,6 +86,9 @@ func GetBalance(c *gin.Context) {
 	}
 
 	balance := domain.GetBalance(account)
+	
+	// Record balance for distribution metrics
+	metrics.RecordAccountBalance(float64(balance))
 	
 	logging.Debug("Balance retrieved", map[string]interface{}{
 		"account_id": id,

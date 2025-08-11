@@ -58,3 +58,10 @@ func (db *InMemory) Reset() {
 	db.accounts = make(map[int]*models.Account)
 	db.nextID = 1
 }
+
+// GetAccountCount returns the number of accounts for metrics
+func (db *InMemory) GetAccountCount() int {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	return len(db.accounts)
+}
