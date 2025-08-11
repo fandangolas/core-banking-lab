@@ -34,9 +34,9 @@ func ValidateOwnerName(owner string) error {
 		return errors.New("owner name cannot exceed 100 characters")
 	}
 	
-	// Check if name contains only letters, spaces, and common punctuation
+	// Check if name contains only letters, numbers, spaces, and common punctuation
 	for _, r := range owner {
-		if !unicode.IsLetter(r) && !unicode.IsSpace(r) && r != '.' && r != '-' && r != '\'' {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsSpace(r) && r != '.' && r != '-' && r != '\'' && r != '_' {
 			return errors.New("owner name contains invalid characters")
 		}
 	}
