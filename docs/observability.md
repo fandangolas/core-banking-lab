@@ -1,211 +1,132 @@
 # Observability & Monitoring
 
+**Comprehensive monitoring, logging, and metrics for production-ready banking operations.**
+
 ## Overview
 
-This document covers the comprehensive observability implementation in Core Banking Lab, including structured logging, metrics collection, and monitoring strategies for production banking systems.
+The banking API implements **full observability stack** with structured logging, metrics collection, real-time events, and health monitoring—essential for production financial systems.
 
 ## Structured Logging
 
-### **JSON-Based Logging System**
-
-**Purpose**: Provide machine-readable, searchable logs for monitoring and debugging.
-
+### JSON Logging for Production
 ```go
-type LogEntry struct {
-    Timestamp string                 `json:"timestamp"`
-    Level     string                 `json:"level"`
-    Message   string                 `json:"message"`
-    Fields    map[string]interface{} `json:"fields,omitempty"`
+type Logger struct {
+    *slog.Logger
 }
 
-// Example log output
+func Info(message string, fields map[string]interface{}) {
+    logger.With(convertFields(fields)...).Info(message)
+}
+
+// Example output:
 {
-    "timestamp": "2025-08-10T02:54:47Z",
+    "time": "2025-08-10T02:54:47Z",
     "level": "INFO",
-    "message": "Account created successfully",
-    "fields": {
-        "account_id": 1,
-        "owner": "Alice",
-        "ip": "127.0.0.1",
-        "request_id": "req-abc123"
-    }
+    "msg": "Transfer completed",
+    "from_account": 1,
+    "to_account": 2,
+    "amount": 5000,
+    "request_id": "req_123",
+    "duration_ms": 1.2
 }
 ```
 
-### **Log Levels & Categories**
-
-**DEBUG**: Development diagnostics
+### Context-Rich Logging
 ```go
-logging.Debug("Processing transfer request", map[string]interface{}{
-    "from_id": req.FromID,
-    "to_id": req.ToID,
-    "amount": req.Amount,
+// Request-level context
+logging.Info("Account balance retrieved", map[string]interface{}{
+    "account_id": accountID,
+    "balance": balance,
+    "client_ip": clientIP,
+    "user_agent": userAgent,
+    "response_time_ms": duration,
 })
-```
 
-**INFO**: Business events and system status
-```go
-logging.Info("Transfer completed", map[string]interface{}{
-    "transaction_id": txnID,
-    "duration_ms": elapsed.Milliseconds(),
-    "success": true,
-})
-```
-
-**WARN**: Security events and recoverable errors
-```go
-logging.Warn("Rate limit approached", map[string]interface{}{
-    "ip": clientIP,
-    "requests_count": currentCount,
-    "limit": rateLimitConfig.Limit,
-})
-```
-
-**ERROR**: System errors requiring attention
-```go
-logging.Error("Database connection failed", map[string]interface{}{
+// Error logging with context
+logging.Error("Transfer failed", map[string]interface{}{
     "error": err.Error(),
-    "retry_attempt": retryCount,
-    "max_retries": maxRetries,
+    "from_account": fromID,
+    "to_account": toID,
+    "amount": amount,
+    "reason": "insufficient_funds",
 })
 ```
 
-## Request Tracing
+**Benefits:**
+- **Searchable**: Query logs by account ID, error type, etc.
+- **Structured**: Machine-readable for log aggregation
+- **Contextual**: Every log entry has relevant business context
+- **Audit Trail**: Complete transaction history for compliance
 
-### **Correlation ID Implementation**
+## Real-Time Metrics
 
-Track requests across system boundaries:
-
-```go
-// Middleware to inject correlation IDs
-func RequestTracing() gin.HandlerFunc {
-    return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-        correlationID := param.Keys["correlation_id"]
-        
-        logEntry := map[string]interface{}{
-            "correlation_id": correlationID,
-            "method": param.Method,
-            "path": param.Path,
-            "status": param.StatusCode,
-            "duration_ms": param.Latency.Milliseconds(),
-            "ip": param.ClientIP,
-            "user_agent": param.Request.UserAgent(),
-        }
-        
-        jsonLog, _ := json.Marshal(logEntry)
-        return string(jsonLog) + "\n"
-    })
-}
-```
-
-### **End-to-End Request Flow**
-
-```
-HTTP Request → [correlation_id: req-abc123]
-  ↓ Rate Limiter → [correlation_id: req-abc123, component: rate_limiter]
-  ↓ Validation → [correlation_id: req-abc123, component: validator]  
-  ↓ Business Logic → [correlation_id: req-abc123, component: domain]
-  ↓ Repository → [correlation_id: req-abc123, component: database]
-  ↓ Event Publish → [correlation_id: req-abc123, component: events]
-HTTP Response → [correlation_id: req-abc123, status: 200, duration: 25ms]
-```
-
-## Metrics Collection
-
-### **Application Metrics**
-
-**Endpoint Performance Metrics**:
+### Performance Metrics
 ```go
 type Metrics struct {
-    RequestCount    map[string]int     // Requests per endpoint
-    RequestLatency  map[string][]time.Duration  // Response times
-    ErrorCount      map[string]int     // Errors per endpoint
-    ActiveRequests  int                // Current concurrent requests
+    TotalRequests     int64
+    TotalErrors       int64
+    AverageLatency    float64
+    EndpointStats     map[string]EndpointMetrics
+    SystemInfo        SystemMetrics
 }
 
-// Middleware for automatic metrics collection
-func MetricsMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        start := time.Now()
-        
-        c.Next()
-        
-        duration := time.Since(start)
-        endpoint := c.Request.Method + " " + c.FullPath()
-        
-        // Record metrics
-        recordRequestMetrics(endpoint, duration, c.Writer.Status())
+type EndpointMetrics struct {
+    Count           int64   `json:"count"`
+    AverageLatency  float64 `json:"avg_duration_ms"`
+    ErrorRate       float64 `json:"error_rate"`
+}
+```
+
+### System Health Monitoring
+```go
+func GetSystemMetrics() SystemMetrics {
+    return SystemMetrics{
+        UptimeSeconds: int64(time.Since(startTime).Seconds()),
+        Goroutines:    runtime.NumGoroutine(),
+        MemoryMB:      getMemoryUsage(),
+        CPUPercent:    getCPUUsage(),
     }
 }
 ```
 
-**Business Logic Metrics**:
-```go
-// Account operation metrics
-var (
-    AccountsCreated     int64
-    TransfersCompleted  int64
-    TransfersFailed     int64
-    TotalVolumeTransferred int64
-    AverageTransferAmount  float64
-)
+### API Endpoint: `/metrics`
+```bash
+curl http://localhost:8080/metrics
 
-// Update metrics in business logic
-func RecordTransfer(amount int, success bool) {
-    if success {
-        atomic.AddInt64(&TransfersCompleted, 1)
-        atomic.AddInt64(&TotalVolumeTransferred, int64(amount))
-    } else {
-        atomic.AddInt64(&TransfersFailed, 1)
+# Response:
+{
+    "endpoints": {
+        "POST /accounts": {
+            "count": 150,
+            "avg_duration_ms": 0.3,
+            "error_rate": 0.02
+        },
+        "POST /accounts/transfer": {
+            "count": 445, 
+            "avg_duration_ms": 1.2,
+            "error_rate": 0.001
+        }
+    },
+    "system": {
+        "uptime_seconds": 3600,
+        "goroutines": 15,
+        "memory_mb": 45,
+        "cpu_percent": 12.5
     }
-}
-```
-
-### **System Health Metrics**
-
-**Resource Utilization**:
-```go
-type SystemMetrics struct {
-    CPUUsage        float64
-    MemoryUsage     int64
-    GoroutineCount  int
-    DatabaseConns   int
-    ActiveSessions  int
-}
-
-// Health check endpoint
-func HealthCheck(c *gin.Context) {
-    metrics := SystemMetrics{
-        CPUUsage:       getCPUUsage(),
-        MemoryUsage:    getMemoryUsage(),
-        GoroutineCount: runtime.NumGoroutine(),
-    }
-    
-    status := "healthy"
-    if metrics.CPUUsage > 80 || metrics.MemoryUsage > 1024*1024*1024 {
-        status = "degraded"
-    }
-    
-    c.JSON(http.StatusOK, gin.H{
-        "status": status,
-        "metrics": metrics,
-        "timestamp": time.Now(),
-    })
 }
 ```
 
 ## Real-Time Event Streaming
 
-### **WebSocket-Based Dashboard Updates**
-
-**Event Broker Implementation**:
+### WebSocket Event Publishing
 ```go
 type EventBroker struct {
-    subscribers []chan models.TransactionEvent
+    subscribers []chan TransactionEvent
     mutex       sync.RWMutex
 }
 
-func (eb *EventBroker) Publish(event models.TransactionEvent) {
+// Non-blocking event publishing
+func (eb *EventBroker) Publish(event TransactionEvent) {
     eb.mutex.RLock()
     defer eb.mutex.RUnlock()
     
@@ -214,269 +135,274 @@ func (eb *EventBroker) Publish(event models.TransactionEvent) {
         case subscriber <- event:
             // Event delivered
         default:
-            // Skip slow subscribers (non-blocking)
-        }
-    }
-}
-
-// WebSocket handler for real-time updates
-func EventStream(c *gin.Context) {
-    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-    if err != nil {
-        return
-    }
-    defer conn.Close()
-    
-    eventChan := make(chan models.TransactionEvent, 100)
-    events.BrokerInstance.Subscribe(eventChan)
-    
-    for event := range eventChan {
-        if err := conn.WriteJSON(event); err != nil {
-            break
+            // Skip slow subscribers (no blocking)
         }
     }
 }
 ```
 
-**Event Types Published**:
-```go
-type TransactionEvent struct {
-    Type        string    `json:"type"`        // "transfer", "deposit", "withdraw"
-    AccountID   int       `json:"account_id"`  // Primary account
-    FromID      int       `json:"from_id"`     // Transfer source
-    ToID        int       `json:"to_id"`       // Transfer destination  
-    Amount      int       `json:"amount"`      // Transaction amount
-    Balance     int       `json:"balance"`     // Updated balance
-    Timestamp   time.Time `json:"timestamp"`   // Event time
+### Live Transaction Events
+```json
+{
+    "type": "transfer",
+    "from_id": 1,
+    "to_id": 2,
+    "amount": 5000,
+    "from_balance": 10000,
+    "to_balance": 5000,
+    "timestamp": "2025-08-10T02:54:47Z",
+    "request_id": "req_456"
 }
 ```
 
-## Performance Monitoring
+### Dashboard Integration
+```javascript
+const ws = new WebSocket('ws://localhost:8080/events');
 
-### **Response Time Analysis**
+ws.onmessage = function(event) {
+    const transaction = JSON.parse(event.data);
+    updateDashboard(transaction);
+};
 
-**Latency Tracking**:
+// Real-time balance updates
+// Live transaction feed  
+// System health indicators
+```
+
+## Health Monitoring
+
+### Health Check Endpoint
+```bash
+curl http://localhost:8080/health
+
+# Response:
+{
+    "status": "healthy",
+    "timestamp": "2025-08-10T02:54:47Z",
+    "version": "1.0.0",
+    "database": "connected",
+    "memory_usage": "45MB",
+    "goroutines": 15
+}
+```
+
+### Kubernetes Health Probes
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health  
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+## Request Tracing
+
+### Request ID Tracking
 ```go
-// Track P50, P95, P99 latencies per endpoint
-type LatencyTracker struct {
-    mutex    sync.RWMutex
-    samples  []time.Duration
-    endpoint string
-}
-
-func (lt *LatencyTracker) Record(duration time.Duration) {
-    lt.mutex.Lock()
-    defer lt.mutex.Unlock()
-    
-    lt.samples = append(lt.samples, duration)
-    
-    // Keep only last 1000 samples for rolling window
-    if len(lt.samples) > 1000 {
-        lt.samples = lt.samples[1:]
-    }
-}
-
-func (lt *LatencyTracker) GetPercentiles() map[string]time.Duration {
-    lt.mutex.RLock()
-    defer lt.mutex.RUnlock()
-    
-    if len(lt.samples) == 0 {
-        return map[string]time.Duration{}
-    }
-    
-    sorted := make([]time.Duration, len(lt.samples))
-    copy(sorted, lt.samples)
-    sort.Slice(sorted, func(i, j int) bool {
-        return sorted[i] < sorted[j]
+// Middleware adds unique ID to each request
+func RequestIDMiddleware() gin.HandlerFunc {
+    return gin.HandlerFunc(func(c *gin.Context) {
+        requestID := generateRequestID()
+        c.Header("X-Request-ID", requestID)
+        c.Set("request_id", requestID)
+        
+        logging.Info("Request started", map[string]interface{}{
+            "request_id": requestID,
+            "method": c.Request.Method,
+            "path": c.Request.URL.Path,
+            "client_ip": c.ClientIP(),
+        })
+        
+        c.Next()
     })
-    
-    return map[string]time.Duration{
-        "p50": sorted[len(sorted)*50/100],
-        "p95": sorted[len(sorted)*95/100], 
-        "p99": sorted[len(sorted)*99/100],
-    }
 }
 ```
 
-### **Throughput Metrics**
+### Full Request Lifecycle Logging
+```json
+// Request start
+{"level": "INFO", "msg": "Request started", "request_id": "req_123", "path": "/accounts/transfer"}
 
-**Requests Per Second**:
-```go
-type ThroughputTracker struct {
-    requestsPerSecond map[int64]int
-    mutex             sync.RWMutex
-}
+// Business logic
+{"level": "INFO", "msg": "Transfer initiated", "request_id": "req_123", "from": 1, "to": 2}
 
-func (tt *ThroughputTracker) RecordRequest() {
-    now := time.Now().Unix()
-    
-    tt.mutex.Lock()
-    defer tt.mutex.Unlock()
-    
-    tt.requestsPerSecond[now]++
-    
-    // Cleanup old data
-    cutoff := now - 300 // Keep 5 minutes of data
-    for timestamp := range tt.requestsPerSecond {
-        if timestamp < cutoff {
-            delete(tt.requestsPerSecond, timestamp)
-        }
-    }
-}
+// Request completion
+{"level": "INFO", "msg": "Request completed", "request_id": "req_123", "status": 200, "duration_ms": 1.2}
 ```
+
+## Production Monitoring Setup
+
+### Docker Compose with Monitoring Stack
+```yaml
+version: '3.8'
+services:
+  api:
+    build: .
+    environment:
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+    
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+```
+
+### Key Metrics to Monitor
+
+**Application Metrics:**
+- Request rate (requests/second)
+- Response time percentiles (P50, P95, P99)  
+- Error rate percentage
+- Concurrent goroutines count
+
+**Business Metrics:**
+- Accounts created per hour
+- Total transaction volume
+- Transfer success rate
+- Balance query frequency
+
+**System Metrics:**
+- CPU utilization
+- Memory usage
+- Database connection pool status
+- WebSocket connections
 
 ## Error Tracking & Alerting
 
-### **Error Classification**
-
-**Business Logic Errors** (Expected):
+### Structured Error Handling
 ```go
-// These are normal business rule violations
-logging.Info("Transfer rejected", map[string]interface{}{
-    "reason": "insufficient_funds",
-    "account_id": accountID,
-    "requested_amount": amount,
+type APIError struct {
+    Code      string    `json:"code"`
+    Message   string    `json:"message"`
+    RequestID string    `json:"request_id,omitempty"`
+    Timestamp time.Time `json:"timestamp"`
+}
+
+// Log error with full context
+logging.Error("Transfer validation failed", map[string]interface{}{
+    "error_code": "INSUFFICIENT_FUNDS",
+    "account_id": fromID,
+    "attempted_amount": amount,
     "current_balance": balance,
+    "request_id": requestID,
+    "client_ip": clientIP,
 })
 ```
 
-**System Errors** (Unexpected):
+### Alert Conditions
 ```go
-// These require immediate attention
-logging.Error("Database connection lost", map[string]interface{}{
-    "error": err.Error(),
-    "database_host": dbConfig.Host,
-    "retry_count": retryCount,
-    "alert": true,  // Trigger alerting
-})
-```
+// Monitor these conditions for production alerts:
 
-### **Alert Conditions**
+// High error rate
+if errorRate > 5.0 {
+    alert("High error rate: " + errorRate + "%")
+}
 
-**Critical Alerts**:
-- Error rate > 5% over 5 minutes
-- Response time P95 > 1000ms over 2 minutes  
-- Rate limit violations > 100/minute
-- Database connection failures
-- System resource exhaustion (CPU > 90%, Memory > 90%)
+// High response time  
+if p95Latency > 100 {
+    alert("High latency: P95 = " + p95Latency + "ms")
+}
 
-**Warning Alerts**:
-- Error rate > 1% over 10 minutes
-- Response time P95 > 500ms over 5 minutes
-- High concurrent request count
-- Unusual transaction patterns
-
-## Dashboard & Visualization
-
-### **Key Performance Indicators**
-
-**System Health Dashboard**:
-- Request throughput (req/sec)
-- Average response time
-- Error rate percentage
-- Active user sessions
-- System resource utilization
-
-**Business Metrics Dashboard**:
-- Total accounts created
-- Transaction volume (money transferred)
-- Most active accounts
-- Transaction success rate
-- Average transaction size
-
-### **Real-Time Monitoring**
-
-**Live Transaction Feed**:
-```javascript
-// Dashboard WebSocket client
-const eventSource = new WebSocket('ws://localhost:8080/events');
-
-eventSource.onmessage = function(event) {
-    const transaction = JSON.parse(event.data);
-    
-    // Update dashboard in real-time
-    updateAccountBalance(transaction.account_id, transaction.balance);
-    addTransactionToFeed(transaction);
-    updateMetrics(transaction);
-};
-```
-
-**Performance Charts**:
-- Response time trends
-- Request volume over time
-- Error rate trends
-- Account creation growth
-- Transaction volume trends
-
-## Log Management
-
-### **Log Rotation & Retention**
-
-**Configuration**:
-```bash
-# Production logging configuration
-export LOG_LEVEL=info
-export LOG_FORMAT=json
-export LOG_MAX_SIZE=100MB
-export LOG_MAX_AGE=30
-export LOG_MAX_BACKUPS=10
-```
-
-**Log Processing Pipeline**:
-```
-Application Logs → Log Aggregator → Search Index → Dashboard
-     ↓                    ↓              ↓           ↓
-  JSON Format    →    Parse/Filter  →   Store    →  Query
-```
-
-### **Security Event Monitoring**
-
-**SIEM Integration Ready**:
-```go
-// Security events with standardized format for SIEM
-func logSecurityEvent(eventType string, details map[string]interface{}) {
-    securityEvent := map[string]interface{}{
-        "event_type": eventType,
-        "severity": "high",
-        "source_ip": details["ip"],
-        "user_agent": details["user_agent"],
-        "timestamp": time.Now(),
-        "details": details,
-    }
-    
-    logging.Warn("Security event", securityEvent)
-    
-    // Could also send to dedicated security log stream
-    sendToSecurityTeam(securityEvent)
+// Memory leak detection
+if goroutineCount > 1000 {
+    alert("Possible goroutine leak: " + goroutineCount)
 }
 ```
 
-## Monitoring Best Practices
+## Log Aggregation
 
-### **Production Readiness Checklist**
+### ELK Stack Integration
+```yaml
+# Filebeat configuration
+filebeat.inputs:
+- type: container
+  paths:
+    - '/var/lib/docker/containers/*/*.log'
+  
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  
+processors:
+- add_kubernetes_metadata: ~
+- decode_json_fields:
+    fields: ["message"]
+    target: ""
+```
 
-- ✅ Structured JSON logging with correlation IDs
-- ✅ Error classification and alerting thresholds  
-- ✅ Performance metrics collection (latency, throughput)
-- ✅ Real-time event streaming for dashboards
-- ✅ Health check endpoints for load balancers
-- ✅ Resource utilization monitoring
-- ✅ Security event logging and alerting
-- ✅ Log retention and rotation policies
+### Log Queries for Operations
+```bash
+# Find all errors for specific account
+GET /logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {"term": {"level": "ERROR"}},
+        {"term": {"account_id": 1}}
+      ]
+    }
+  }
+}
 
-### **Operational Workflows**
+# Transaction audit trail
+GET /logs/_search  
+{
+  "query": {
+    "match": {"request_id": "req_123"}
+  },
+  "sort": [{"timestamp": {"order": "asc"}}]
+}
+```
 
-**Incident Response**:
-1. Alert triggers from metrics threshold
-2. Correlation ID lookup for affected requests
-3. Log analysis to identify root cause
-4. Performance metrics to assess impact
-5. Real-time monitoring during resolution
+## Performance Profiling
 
-**Capacity Planning**:
-1. Trend analysis from historical metrics
-2. Load testing with performance monitoring
-3. Resource utilization forecasting
-4. Scaling decision support from data
+### Built-in Profiling Endpoints
+```go
+import _ "net/http/pprof"
 
-This observability implementation provides comprehensive visibility into system behavior, performance, and security for production banking operations.
+// Enable profiling in development
+go func() {
+    log.Println(http.ListenAndServe("localhost:6060", nil))
+}()
+```
+
+### Analysis Commands
+```bash
+# CPU profiling
+go tool pprof http://localhost:6060/debug/pprof/profile
+
+# Memory profiling  
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# Goroutine analysis
+go tool pprof http://localhost:6060/debug/pprof/goroutine
+```
+
+## Key Observability Features
+
+✅ **Structured Logging**: JSON format with business context  
+✅ **Real-time Metrics**: Live performance and system health data  
+✅ **Event Streaming**: WebSocket-based transaction notifications  
+✅ **Request Tracing**: Full request lifecycle with unique IDs  
+✅ **Health Monitoring**: Kubernetes-ready health checks  
+✅ **Error Tracking**: Comprehensive error context and audit trails  
+
+This observability implementation provides complete visibility into system behavior, enabling rapid troubleshooting, performance optimization, and compliance reporting for production banking operations.

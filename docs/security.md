@@ -1,509 +1,516 @@
-# Security Implementation Guide
+# Security Implementation
+
+**Production-grade security hardening for banking operations with defense-in-depth approach.**
 
 ## Overview
 
-This document outlines the comprehensive security measures implemented in the Core Banking Lab, designed to meet the high security standards required for financial systems.
+The banking API implements **comprehensive security measures** across all layers - from network perimeter to business logic - designed to protect sensitive financial data and prevent fraud.
 
-## Security Architecture
+## Rate Limiting
 
-### **Defense-in-Depth Strategy**
-
-Our security model implements multiple layers of protection:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Network Layer                         │
-│  • Rate Limiting (IP-based throttling)                 │
-│  • CORS Origin Validation                              │
-│  • Request Size Limits                                 │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                Application Layer                        │
-│  • Input Validation & Sanitization                     │
-│  • Business Logic Controls                             │
-│  • Error Handling (no info leakage)                    │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                   Data Layer                            │
-│  • Account Access Controls                             │
-│  • Transaction Audit Logging                          │
-│  • Data Integrity Validation                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Rate Limiting & DoS Protection
-
-### **Implementation Details**
-
-**Purpose**: Prevent denial-of-service attacks and API abuse by limiting request frequency per client.
-
+### IP-Based Request Throttling
 ```go
 type RateLimiter struct {
-    requests map[string][]time.Time  // IP -> request timestamps
-    mutex    sync.RWMutex           // Thread-safe access
-    limit    int                    // Max requests per window
-    window   time.Duration          // Time window (default: 1 minute)
+    requests map[string][]time.Time
+    mutex    sync.RWMutex
+    limit    int           // Requests per window
+    window   time.Duration // Time window
+}
+
+func (rl *RateLimiter) Allow(clientIP string) bool {
+    rl.mutex.Lock()
+    defer rl.mutex.Unlock()
+    
+    now := time.Now()
+    
+    // Clean expired requests (prevents memory leaks)
+    validRequests := []time.Time{}
+    for _, reqTime := range rl.requests[clientIP] {
+        if now.Sub(reqTime) < rl.window {
+            validRequests = append(validRequests, reqTime)
+        }
+    }
+    
+    if len(validRequests) >= rl.limit {
+        return false // Rate limit exceeded
+    }
+    
+    rl.requests[clientIP] = append(validRequests, now)
+    return true
 }
 ```
 
-### **Key Features**
-
-- **IP-based tracking**: Each client IP has independent rate limits
-- **Sliding window**: More accurate than fixed-window counters
-- **Automatic cleanup**: Expired requests are removed to prevent memory leaks
-- **Configurable limits**: Adjust via environment variables
-
-### **Configuration**
-
+### Configuration
 ```bash
-# Production settings
-export RATE_LIMIT_REQUESTS_PER_MINUTE=30
+# Production rate limiting
+export RATE_LIMIT_REQUESTS_PER_MINUTE=50
 
-# Development settings  
-export RATE_LIMIT_REQUESTS_PER_MINUTE=100
-
-# High-security environment
-export RATE_LIMIT_REQUESTS_PER_MINUTE=10
+# Development (more permissive)
+export RATE_LIMIT_REQUESTS_PER_MINUTE=1000
 ```
 
-### **Attack Scenarios Prevented**
+### Rate Limit Response
+```json
+{
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "Too many requests. Please try again later.",
+    "retry_after": 60
+}
+```
 
-1. **Brute Force Account Enumeration**
-   ```bash
-   # Attacker attempts - blocked after 30 requests
-   for i in {1..1000}; do
-     curl http://api/accounts/$i/balance
-   done
-   ```
+## Input Validation
 
-2. **Transaction Flooding**
-   ```bash
-   # Rapid-fire transfers to hide fraudulent activity - blocked
-   for i in {1..100}; do  
-     curl -X POST http://api/accounts/transfer -d '{"from":1,"to":2,"amount":1}'
-   done
-   ```
-
-3. **System Resource Exhaustion**
-   - Prevents single client from consuming all server resources
-   - Maintains service availability for legitimate users
-
-## Input Validation & Sanitization
-
-### **Comprehensive Validation Strategy**
-
-**Purpose**: Prevent injection attacks and ensure data integrity across all inputs.
-
-### **Amount Validation**
-
+### Amount Validation
 ```go
-const (
-    MinAmount = 1                    // Minimum: R$ 0.01
-    MaxAmount = 1000000             // Maximum: R$ 10,000.00 (in centavos)
-)
-
 func ValidateAmount(amount int) error {
-    if amount < MinAmount {
-        return errors.New("amount must be greater than zero")
+    if amount <= 0 {
+        return errors.New("amount must be positive")
     }
-    if amount > MaxAmount {
+    
+    if amount > 1000000 { // R$ 10,000.00 limit
         return errors.New("amount exceeds maximum limit of R$ 10,000.00")
     }
+    
     return nil
 }
 ```
 
-**Prevents**:
-- Integer overflow attacks
-- Negative amount exploits  
-- Unrealistic transaction sizes
-- Business logic bypass attempts
-
-### **Account Owner Validation**
-
+### Account Owner Validation
 ```go
 func ValidateOwnerName(owner string) error {
-    owner = strings.TrimSpace(owner)
-    
-    if len(owner) < MinOwnerLen {
+    if len(owner) < 2 {
         return errors.New("owner name must be at least 2 characters")
     }
     
-    if len(owner) > MaxOwnerLen {
-        return errors.New("owner name cannot exceed 100 characters")
+    if len(owner) > 100 {
+        return errors.New("owner name must be less than 100 characters")
     }
     
-    // Only allow letters, spaces, and safe punctuation
-    for _, r := range owner {
-        if !unicode.IsLetter(r) && !unicode.IsSpace(r) && 
-           r != '.' && r != '-' && r != '\'' {
-            return errors.New("owner name contains invalid characters")
-        }
+    // Allow only letters, spaces, periods, hyphens, apostrophes
+    validName := regexp.MustCompile(`^[a-zA-ZÀ-ÿ\s.\-']+$`)
+    if !validName.MatchString(owner) {
+        return errors.New("owner name contains invalid characters")
     }
     
     return nil
 }
 ```
 
-**Prevents**:
-- SQL injection via name fields
-- Cross-site scripting (XSS) payloads
-- Buffer overflow attempts
-- Unicode-based attacks
-
-### **Account ID Validation**
-
+### Request Parameter Validation
 ```go
-func ValidateAccountID(id int) error {
-    if id <= 0 {
-        return errors.New("account ID must be positive")
+// Transfer request validation
+func ValidateTransferRequest(req TransferRequest) error {
+    if req.From == req.To {
+        return errors.New("cannot transfer to the same account")
     }
-    return nil
+    
+    if req.From <= 0 || req.To <= 0 {
+        return errors.New("invalid account IDs")
+    }
+    
+    return ValidateAmount(req.Amount)
 }
 ```
 
-**Prevents**:
-- Directory traversal attacks
-- Negative ID exploits
-- Zero-value bypass attempts
+## CORS Protection
 
-## CORS (Cross-Origin Resource Sharing) Protection
-
-### **Strict Origin Control**
-
-**Purpose**: Prevent unauthorized web applications from accessing the banking API.
-
+### Strict Origin Policy
 ```go
-func CORS(cfg *config.Config) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        origin := c.Request.Header.Get("Origin")
-        
-        // Check if origin is in allowlist
-        allowed := false
-        for _, allowedOrigin := range cfg.CORS.AllowedOrigins {
-            if allowedOrigin == origin {
-                allowed = true
-                c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-                break
-            }
-        }
-        
-        // Reject if origin not allowed
-        if !allowed {
-            c.AbortWithStatus(http.StatusForbidden)
-            return
-        }
-        
-        c.Next()
+func CORSMiddleware() gin.HandlerFunc {
+    config := cors.Config{
+        AllowOrigins:     getAllowedOrigins(),
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+        AllowHeaders:     []string{"Content-Type", "Authorization", "Accept"},
+        ExposeHeaders:    []string{"X-Request-ID"},
+        AllowCredentials: false,
+        MaxAge:          12 * time.Hour,
     }
+    
+    return cors.New(config)
+}
+
+func getAllowedOrigins() []string {
+    origins := os.Getenv("CORS_ALLOWED_ORIGINS")
+    if origins == "" {
+        // Development default
+        return []string{"http://localhost:5173"}
+    }
+    
+    // Production: explicit whitelist
+    return strings.Split(origins, ",")
 }
 ```
 
-### **Security Configuration**
-
+### Production Configuration
 ```bash
-# Production: Specific domains only
-export CORS_ALLOWED_ORIGINS="https://secure-banking.com,https://mobile.banking.com"
+# Strict production CORS
+export CORS_ALLOWED_ORIGINS="https://secure-banking.example.com,https://banking-dashboard.example.com"
 
-# Development: Local testing
-export CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:5173"
-
-# NEVER use in production
-export CORS_ALLOWED_ORIGINS="*"  # ❌ DANGEROUS
+# No wildcards in production!
+# NEVER: export CORS_ALLOWED_ORIGINS="*"
 ```
 
-### **Attack Prevention**
+## Error Handling Security
 
-- **Cross-Site Request Forgery (CSRF)**: Unauthorized domains cannot make requests
-- **Data Exfiltration**: Malicious sites cannot read API responses
-- **Click-jacking**: Prevents embedding in unauthorized frames
-
-## Error Handling & Information Disclosure Prevention
-
-### **Structured Error Responses**
-
-**Purpose**: Provide consistent error information while preventing sensitive data leakage.
-
+### Generic Error Responses
 ```go
 type APIError struct {
-    Code    string `json:"code"`       // Machine-readable error code
-    Message string `json:"message"`    // Human-readable message  
-    Status  int    `json:"-"`         // HTTP status (not exposed)
+    Code      string    `json:"code"`
+    Message   string    `json:"message"`
+    RequestID string    `json:"request_id,omitempty"`
+    Timestamp time.Time `json:"timestamp"`
 }
 
-// Example error responses
-{
-    "code": "INSUFFICIENT_FUNDS",
-    "message": "Insufficient funds for this transaction"
-}
-
-{
-    "code": "ACCOUNT_NOT_FOUND", 
-    "message": "Account not found"
+// GOOD: Generic error message
+func handleTransferError(err error) APIError {
+    switch {
+    case errors.Is(err, ErrInsufficientFunds):
+        return APIError{
+            Code:    "INSUFFICIENT_FUNDS",
+            Message: "Transaction cannot be completed", // Generic
+        }
+    case errors.Is(err, ErrAccountNotFound):
+        return APIError{
+            Code:    "ACCOUNT_NOT_FOUND", 
+            Message: "Account not found", // No details
+        }
+    default:
+        return APIError{
+            Code:    "INTERNAL_SERVER_ERROR",
+            Message: "An error occurred", // No system details
+        }
+    }
 }
 ```
 
-### **Information Disclosure Prevention**
-
-**What we DON'T expose:**
-- Internal server errors or stack traces
-- Database connection details
-- File system paths
-- Account balances in error messages
-- Existence of specific accounts (timing attacks)
-
-**What we DO log securely:**
+### Security Audit Logging
 ```go
-// Security event logging with context
-logging.Warn("Invalid transfer attempt", map[string]interface{}{
-    "error":       err.Error(),
-    "ip":          c.ClientIP(),
-    "user_agent":  c.Request.UserAgent(),
-    "from_id":     req.FromID,
-    "to_id":       req.ToID,
-    "amount":      req.Amount,
-    "timestamp":   time.Now(),
-})
+func logSecurityEvent(eventType string, c *gin.Context, details map[string]interface{}) {
+    securityLog := map[string]interface{}{
+        "event_type":   eventType,
+        "client_ip":    c.ClientIP(),
+        "user_agent":   c.Request.UserAgent(),
+        "request_path": c.Request.URL.Path,
+        "timestamp":    time.Now(),
+        "details":      details,
+    }
+    
+    logging.Warn("Security event", securityLog)
+}
+
+// Usage examples:
+// logSecurityEvent("RATE_LIMIT_EXCEEDED", c, map[string]interface{}{"attempts": 5})
+// logSecurityEvent("INVALID_INPUT", c, map[string]interface{}{"field": "amount", "value": -100})
 ```
-
-## Audit Logging & Forensic Trails
-
-### **Comprehensive Transaction Logging**
-
-**Purpose**: Maintain complete audit trails for compliance and forensic analysis.
-
-### **Security Event Categories**
-
-1. **Authentication Events**
-   ```go
-   logging.Info("Account access", map[string]interface{}{
-       "account_id": accountID,
-       "operation":  "balance_query",
-       "ip":         clientIP,
-       "success":    true,
-   })
-   ```
-
-2. **Authorization Failures**
-   ```go
-   logging.Warn("Rate limit exceeded", map[string]interface{}{
-       "ip":              clientIP,
-       "requests_in_window": requestCount,
-       "limit":           rateLimitConfig.Limit,
-       "user_agent":      userAgent,
-   })
-   ```
-
-3. **Business Logic Violations**
-   ```go
-   logging.Error("Transfer validation failed", map[string]interface{}{
-       "from_account":    req.FromID,
-       "to_account":      req.ToID,
-       "amount":          req.Amount,
-       "reason":          "insufficient_funds",
-       "current_balance": currentBalance,
-       "ip":              clientIP,
-   })
-   ```
-
-4. **System Events**
-   ```go
-   logging.Info("System startup", map[string]interface{}{
-       "version":    appVersion,
-       "config":     sanitizedConfig,
-       "timestamp":  startTime,
-   })
-   ```
-
-### **Log Security Features**
-
-- **Structured JSON**: Machine-parseable for SIEM integration
-- **Correlation IDs**: Track requests across system boundaries  
-- **Tamper Evidence**: Cryptographic integrity (future enhancement)
-- **Retention Policies**: Automatic archival and purging
-- **Sensitive Data Protection**: No passwords or PII in logs
 
 ## Business Logic Security
 
-### **Transaction Validation Rules**
-
-**Purpose**: Enforce business rules that prevent financial fraud and abuse.
-
-### **Transfer Security Controls**
-
-1. **Self-Transfer Prevention**
-   ```go
-   if req.FromID == req.ToID {
-       return errors.NewSelfTransferError()
-   }
-   ```
-
-2. **Account Existence Validation**
-   ```go
-   from, exists := database.Repo.GetAccount(req.FromID)
-   if !exists {
-       return errors.NewAccountNotFoundError()
-   }
-   ```
-
-3. **Balance Sufficiency Check**
-   ```go
-   if from.Balance < req.Amount {
-       return errors.NewInsufficientFundsError()
-   }
-   ```
-
-4. **Atomic Operations**
-   ```go
-   // All balance updates are atomic to prevent race conditions
-   from.Balance -= req.Amount
-   to.Balance += req.Amount
-   ```
-
-### **Account Creation Security**
-
-1. **Owner Name Validation**
-   - Length limits (2-100 characters)
-   - Character restrictions (letters, spaces, safe punctuation)
-   - Unicode normalization
-
-2. **Duplicate Prevention**
-   - Account ID sequence integrity
-   - Unique constraint enforcement
-
-## Thread Safety & Concurrency Security
-
-### **Deadlock Prevention**
-
-**Purpose**: Prevent system lockups while maintaining data consistency.
-
+### Transfer Validation
 ```go
-// Ordered locking algorithm prevents deadlocks
-if from.Id < to.Id {
-    from.Mu.Lock()
-    to.Mu.Lock()
-} else {
-    to.Mu.Lock()
-    from.Mu.Lock()
+func ProcessTransfer(from, to *Account, amount int) error {
+    // 1. Validate business rules
+    if from.ID == to.ID {
+        logSecurityEvent("SELF_TRANSFER_ATTEMPT", nil, map[string]interface{}{
+            "account_id": from.ID,
+            "amount": amount,
+        })
+        return errors.New("self-transfer not allowed")
+    }
+    
+    // 2. Validate account state
+    if from.Balance < amount {
+        logSecurityEvent("INSUFFICIENT_FUNDS_ATTEMPT", nil, map[string]interface{}{
+            "account_id": from.ID,
+            "balance": from.Balance,
+            "attempted": amount,
+        })
+        return ErrInsufficientFunds
+    }
+    
+    // 3. Validate amount limits
+    if amount > 100000 { // R$ 1,000.00 
+        logSecurityEvent("LARGE_TRANSFER_ATTEMPT", nil, map[string]interface{}{
+            "from_account": from.ID,
+            "to_account": to.ID,
+            "amount": amount,
+        })
+        return errors.New("transfer amount exceeds limit")
+    }
+    
+    // 4. Execute atomic transfer
+    from.Balance -= amount
+    to.Balance += amount
+    
+    return nil
 }
-defer from.Mu.Unlock()
-defer to.Mu.Unlock()
 ```
 
-### **Race Condition Prevention**
-
-- **Account-level locking**: Each account has its own mutex
-- **Atomic operations**: All balance updates are protected
-- **Consistent ordering**: Prevents circular wait conditions
-
-## Security Configuration Management
-
-### **Environment-Based Security Settings**
-
-```bash
-# Security-focused production configuration
-export CORS_ALLOWED_ORIGINS="https://secure-banking.com"
-export RATE_LIMIT_REQUESTS_PER_MINUTE=30
-export LOG_LEVEL=warn
-export LOG_FORMAT=json
-
-# High-security environment
-export CORS_ALLOWED_ORIGINS="https://internal.bank.com"  
-export RATE_LIMIT_REQUESTS_PER_MINUTE=10
-export LOG_LEVEL=error
+### Account Balance Protection
+```go
+func WithdrawMoney(acc *Account, amount int) error {
+    // Prevent negative balances
+    withAccountLock(acc, func() {
+        if acc.Balance-amount < 0 {
+            logSecurityEvent("OVERDRAFT_ATTEMPT", nil, map[string]interface{}{
+                "account_id": acc.ID,
+                "balance": acc.Balance,
+                "withdrawal": amount,
+            })
+            err = ErrInsufficientFunds
+            return
+        }
+        
+        acc.Balance -= amount
+    })
+    
+    return err
+}
 ```
 
-### **Security Defaults**
+## Request Security
 
-- **Rate limiting**: Enabled by default (100 req/min)
-- **CORS**: Restrictive allowlist (localhost only in dev)
-- **Validation**: All inputs validated by default
-- **Logging**: Security events always logged
-- **Error handling**: Safe defaults, no information disclosure
+### Request ID Tracking
+```go
+func RequestSecurityMiddleware() gin.HandlerFunc {
+    return gin.HandlerFunc(func(c *gin.Context) {
+        requestID := generateSecureRequestID()
+        c.Header("X-Request-ID", requestID)
+        c.Set("request_id", requestID)
+        
+        // Log all requests for audit trail
+        logging.Info("Request received", map[string]interface{}{
+            "request_id": requestID,
+            "method":     c.Request.Method,
+            "path":       c.Request.URL.Path,
+            "client_ip":  c.ClientIP(),
+            "user_agent": c.Request.UserAgent(),
+            "content_length": c.Request.ContentLength,
+        })
+        
+        c.Next()
+    })
+}
 
-## Monitoring & Alerting
-
-### **Security Metrics**
-
-Track these key security indicators:
-
-1. **Rate Limiting Events**
-   - Requests blocked per IP
-   - Top offending IP addresses
-   - Rate limit threshold adjustments
-
-2. **Validation Failures**
-   - Invalid input attempt frequency
-   - Attack pattern detection
-   - Payload analysis
-
-3. **CORS Violations**
-   - Blocked origin attempts
-   - Suspicious cross-origin patterns
-   - Configuration effectiveness
-
-### **Alert Thresholds**
-
-```bash
-# Example alerting rules
-rate_limit_violations_per_minute > 10
-invalid_input_attempts_per_hour > 50
-cors_violations_per_day > 5
-failed_transfers_per_minute > 20
+func generateSecureRequestID() string {
+    // Cryptographically secure random ID
+    bytes := make([]byte, 16)
+    rand.Read(bytes)
+    return fmt.Sprintf("req_%x", bytes[:8])
+}
 ```
 
-## Compliance & Best Practices
+### Content-Type Validation
+```go
+func ValidateContentType() gin.HandlerFunc {
+    return gin.HandlerFunc(func(c *gin.Context) {
+        if c.Request.Method == "POST" || c.Request.Method == "PUT" {
+            contentType := c.GetHeader("Content-Type")
+            if contentType != "application/json" {
+                logSecurityEvent("INVALID_CONTENT_TYPE", c, map[string]interface{}{
+                    "content_type": contentType,
+                })
+                c.JSON(http.StatusUnsupportedMediaType, APIError{
+                    Code:    "INVALID_CONTENT_TYPE",
+                    Message: "Content-Type must be application/json",
+                })
+                c.Abort()
+                return
+            }
+        }
+        c.Next()
+    })
+}
+```
 
-### **Industry Standards Alignment**
+## Data Protection
 
-- **PCI DSS**: Data protection and access controls
-- **SOX**: Audit logging and transaction integrity
-- **GDPR**: Privacy by design (when handling EU customers)
-- **OWASP Top 10**: Protection against common vulnerabilities
+### No Sensitive Data in Logs
+```go
+// BAD: Logs sensitive data
+logging.Info("User login", map[string]interface{}{
+    "password": password, // ❌ Never log passwords
+    "ssn": userSSN,       // ❌ Never log PII
+})
 
-### **Security Testing**
+// GOOD: Logs relevant context only
+logging.Info("Account operation", map[string]interface{}{
+    "account_id": accountID,    // ✅ Business identifier
+    "operation": "transfer",    // ✅ Action type
+    "success": true,           // ✅ Outcome
+    // No sensitive amounts or personal data
+})
+```
 
-Regular security assessments should include:
+### Secure Configuration
+```go
+type Config struct {
+    ServerPort    string
+    CORSOrigins   []string
+    RateLimitRPM  int
+    LogLevel      string
+    
+    // Sensitive fields should use secure sources
+    JWTSecret     string // From environment or secret store
+    DatabaseURL   string // From environment or secret store
+}
 
-1. **Penetration Testing**
-   - Rate limiting bypass attempts
-   - Input validation evasion
-   - CORS policy violations
+func LoadConfig() *Config {
+    return &Config{
+        ServerPort:   getEnvDefault("SERVER_PORT", "8080"),
+        LogLevel:     getEnvDefault("LOG_LEVEL", "info"),
+        RateLimitRPM: getEnvIntDefault("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
+        
+        // Never hardcode secrets!
+        JWTSecret:   os.Getenv("JWT_SECRET"), 
+        DatabaseURL: os.Getenv("DATABASE_URL"),
+    }
+}
+```
 
-2. **Load Testing**
-   - DoS resistance validation
-   - Resource exhaustion testing
-   - Concurrent attack simulation
+## Security Headers
 
-3. **Code Review**
-   - Static analysis for vulnerabilities
-   - Dependency vulnerability scanning
-   - Security-focused code reviews
+### HTTP Security Headers
+```go
+func SecurityHeadersMiddleware() gin.HandlerFunc {
+    return gin.HandlerFunc(func(c *gin.Context) {
+        // Prevent MIME sniffing
+        c.Header("X-Content-Type-Options", "nosniff")
+        
+        // Prevent clickjacking
+        c.Header("X-Frame-Options", "DENY")
+        
+        // XSS protection
+        c.Header("X-XSS-Protection", "1; mode=block")
+        
+        // Referrer policy
+        c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+        
+        // HTTPS enforcement (in production)
+        if os.Getenv("ENVIRONMENT") == "production" {
+            c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        }
+        
+        c.Next()
+    })
+}
+```
 
-## Future Security Enhancements
+## Container Security
 
-### **Planned Improvements**
+### Dockerfile Security Best Practices
+```dockerfile
+# Use specific version tags (not latest)
+FROM golang:1.23-alpine AS builder
 
-1. **Authentication & Authorization**
-   - JWT token implementation
-   - Role-based access controls
-   - Multi-factor authentication
+# Create non-root user
+RUN adduser -D -s /bin/sh -u 1001 bankuser
 
-2. **Advanced Threat Protection**
-   - Machine learning fraud detection
-   - Behavioral analysis
-   - Geolocation-based controls
+# Use multi-stage build (smaller attack surface)
+FROM alpine:3.18
+RUN apk --no-cache add ca-certificates tzdata
 
-3. **Cryptographic Enhancements**
-   - Data encryption at rest
-   - API request signing
-   - Certificate-based authentication
+# Switch to non-root user
+USER bankuser
+WORKDIR /home/bankuser/
 
-4. **Monitoring & Response**
-   - SIEM integration
-   - Automated threat response
-   - Incident response playbooks
+# Copy only binary (no source code)
+COPY --from=builder /app/bank-api .
 
-This security implementation provides a robust foundation for a production banking system, with multiple layers of protection against common and advanced threats.
+# Expose port explicitly
+EXPOSE 8080
+
+# Use specific command
+CMD ["./bank-api"]
+```
+
+### Kubernetes Security Policy
+```yaml
+apiVersion: v1
+kind: Pod
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    fsGroup: 2000
+  containers:
+  - name: banking-api
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi" 
+        cpu: "250m"
+```
+
+## Security Monitoring
+
+### Threat Detection
+```go
+var suspiciousActivity = map[string]int{
+    "RAPID_REQUESTS":     5,   // More than 5 req/sec from single IP
+    "LARGE_TRANSFERS":    3,   // More than 3 large transfers/hour
+    "FAILED_VALIDATIONS": 10,  // More than 10 validation failures
+}
+
+func detectSuspiciousActivity(eventType string, clientIP string) {
+    count := incrementActivityCounter(eventType, clientIP)
+    
+    if count >= suspiciousActivity[eventType] {
+        logging.Warn("Suspicious activity detected", map[string]interface{}{
+            "event_type": eventType,
+            "client_ip":  clientIP,
+            "count":      count,
+            "threshold":  suspiciousActivity[eventType],
+            "alert":      true,
+        })
+        
+        // Could trigger additional security measures:
+        // - Temporary IP blocking
+        // - Enhanced monitoring
+        // - Security team notification
+    }
+}
+```
+
+## Security Checklist
+
+### ✅ Production Security Measures
+
+**Network Security:**
+- Rate limiting per IP address
+- CORS with explicit origin whitelist
+- HTTPS enforcement in production
+- Security headers implementation
+
+**Input Security:**
+- Comprehensive input validation
+- SQL injection prevention (parameterized queries)
+- Amount and length limits
+- Content-type validation
+
+**Application Security:**
+- Generic error messages (no sensitive data leakage)
+- Secure request ID generation  
+- Audit logging for all security events
+- No hardcoded secrets or credentials
+
+**Infrastructure Security:**
+- Non-root container execution
+- Minimal container image (Alpine Linux)
+- Resource limits and constraints
+- Read-only filesystem where possible
+
+**Monitoring & Response:**
+- Security event logging and alerting
+- Suspicious activity detection
+- Request tracing for forensics
+- Comprehensive audit trails
+
+This security implementation provides multiple layers of protection suitable for production banking operations while maintaining usability and performance.
