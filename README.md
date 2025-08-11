@@ -92,8 +92,7 @@ go test ./tests/integration/account -run TestConcurrentTransfer
 ## Documentation
 
 - [**Architecture**](docs/architecture.md) - Design patterns and structure
-- [**API Reference**](docs/api.md) - Endpoints and examples  
-- [**Deployment**](docs/deployment.md) - Docker and configuration
+- [**API Reference**](docs/api.md) - Endpoints and examples
 
 ---
 
