@@ -1,4 +1,24 @@
+# Development and build artifacts
 dev/dashboard/
 tests/
 *.md
 .github/
+.git/
+
+# Terraform files (650MB+ of provider binaries)
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/.terraform.lock.hcl
+
+# Infrastructure files not needed for app build
+infra/
+k8s/
+monitoring/
+docs/
+
+# CI/CD files
+ci-cd/
+
+# Other unnecessary files
+LICENSE
+docker-compose.yml
