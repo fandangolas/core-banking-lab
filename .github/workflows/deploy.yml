@@ -8,7 +8,6 @@ on:
       - 'dev/dashboard/**'
       - 'k8s/**'
       - 'infra/**'
-      - 'infra/terraform/**'
   workflow_dispatch:
     inputs:
       environment:
