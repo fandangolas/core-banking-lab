@@ -27,7 +27,7 @@ func main() {
 	// Setup router with middleware - testing new GHCR PAT token
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
-	router.Use(middleware.RateLimit(cfg))
+	//router.Use(middleware.RateLimit(cfg))
 
 	// Register routes
 	routes.RegisterRoutes(router)

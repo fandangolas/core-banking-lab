@@ -103,8 +103,8 @@
             .dockerconfigjson: "{{ ('{ \"auths\": { \"ghcr.io\": { \"auth\": \"' + (github_actor + ':' + github_token) | b64encode + '\" } } }') | b64encode }}"
         kubeconfig: /home/ubuntu/.kube/config
       vars:
-        github_actor: "{{ ansible_env.GITHUB_ACTOR | default('fandangolas') }}"
-        github_token: "{{ ansible_env.GITHUB_TOKEN | default('') }}"
+        github_actor: "{{ github_actor }}"
+        github_token: "{{ github_token }}"
       become_user: ubuntu
 
     - name: Apply Kubernetes manifests
