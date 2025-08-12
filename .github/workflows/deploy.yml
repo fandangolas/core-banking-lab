@@ -332,12 +332,11 @@ jobs:
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' ../../k8s/*.yaml
 
       - name: Run Ansible playbook
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
         run: |
           ansible-playbook -i inventory/aws_ec2.yml playbooks/deploy.yml \
-            --extra-vars "target_host=${{ needs.terraform.outputs.instance-ip }}"
+            --extra-vars "target_host=${{ needs.terraform.outputs.instance-ip }}" \
+            --extra-vars "github_actor=${{ github.actor }}" \
+            --extra-vars "github_token=${{ secrets.GHCR_PAT }}"
 
       - name: Display deployment information
         run: |
