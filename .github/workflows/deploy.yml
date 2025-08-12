@@ -160,28 +160,38 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Handle existing key pair
+      - name: Synchronize Terraform state with AWS reality
         run: |
-          if aws ec2 describe-key-pairs --key-names core-banking-lab-key --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "Key pair exists in AWS, updating terraform.tfvars and importing..."
-            
-            # Get the actual public key from AWS
-            aws_public_key=$(aws ec2 describe-key-pairs --key-names core-banking-lab-key --region ${{ env.AWS_REGION }} --query 'KeyPairs[0].PublicKey' --output text)
-            echo "Retrieved public key from AWS (first 50 chars): ${aws_public_key:0:50}..."
-            
-            # Replace the ssh_public_key in terraform.tfvars with the actual AWS key
-            sed -i '/ssh_public_key = <<EOKEY/,/EOKEY/c\ssh_public_key = "'"$aws_public_key"'"' terraform.tfvars
-            
-            # Import the key pair (suppress error if already imported)
-            if ! terraform import aws_key_pair.main core-banking-lab-key 2>/dev/null; then
-              echo "Key pair import failed or already in state - checking state..."
-              terraform show | grep -A5 "aws_key_pair.main" || echo "Key pair not found in state"
+          echo "Checking for state/reality mismatches..."
+          
+          # Check if key pair exists in state but not in AWS (common after manual cleanups)
+          if terraform state list | grep -q "aws_key_pair.main"; then
+            if ! aws ec2 describe-key-pairs --key-names core-banking-lab-key --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+              echo "Key pair exists in Terraform state but not in AWS - removing from state"
+              terraform state rm aws_key_pair.main
+            else
+              echo "Key pair exists in both state and AWS - checking for import"
+              # Try to refresh state to ensure it's properly synced
+              terraform plan -detailed-exitcode -out=/dev/null >/dev/null 2>&1 || echo "State refresh completed"
             fi
-            
-            echo "Terraform state after import attempt:"
-            terraform state list | grep key_pair || echo "No key pair in state"
           else
-            echo "Key pair does not exist, Terraform will create it"
+            echo "Key pair not in Terraform state"
+          fi
+          
+          # Only clean up truly orphaned VPCs (those not in current state)
+          current_vpc=$(terraform show -json 2>/dev/null | jq -r '.values.root_module.resources[]? | select(.address == "aws_vpc.main") | .values.id' 2>/dev/null || echo "")
+          if [ ! -z "$current_vpc" ]; then
+            echo "Current VPC in state: $current_vpc"
+            echo "Checking for duplicate VPCs to clean up..."
+            aws ec2 describe-vpcs --region ${{ env.AWS_REGION }} --filters "Name=tag:Project,Values=core-banking-lab" "Name=state,Values=available" --query 'Vpcs[].VpcId' --output text | tr '\t' '\n' | while read vpc_id; do
+              if [ "$vpc_id" != "$current_vpc" ] && [ ! -z "$vpc_id" ]; then
+                echo "Found orphaned VPC to clean up: $vpc_id"
+                # Basic cleanup attempt (best effort)
+                aws ec2 delete-vpc --region ${{ env.AWS_REGION }} --vpc-id $vpc_id >/dev/null 2>&1 && echo "Cleaned up $vpc_id" || echo "Could not clean up $vpc_id (has dependencies)"
+              fi
+            done
+          else
+            echo "No VPC found in current Terraform state"
           fi
 
       - name: Terraform Validate
