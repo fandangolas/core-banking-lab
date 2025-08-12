@@ -7,12 +7,14 @@ terraform {
     }
   }
   
-  # Optional: Configure remote state
-  # backend "s3" {
-  #   bucket = "core-banking-lab-terraform-state"
-  #   key    = "terraform.tfstate"
-  #   region = "us-east-1"
-  # }
+  # Remote state configuration
+  backend "s3" {
+    bucket         = "core-banking-lab-terraform-state-718277288108"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "core-banking-lab-terraform-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
