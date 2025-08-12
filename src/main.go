@@ -13,25 +13,25 @@ import (
 func main() {
 	// Load configuration
 	cfg := config.Load()
-	
+
 	// Initialize logging
 	logging.Init(cfg)
 	logging.Info("Starting bank-api server", map[string]interface{}{
 		"port": cfg.Server.Port,
 		"host": cfg.Server.Host,
 	})
-	
+
 	// Initialize database
 	database.Init()
-	
+
 	// Setup router with middleware
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
-	router.Use(middleware.RateLimit(cfg))
-	
+	//router.Use(middleware.RateLimit(cfg))
+
 	// Register routes
 	routes.RegisterRoutes(router)
-	
+
 	// Start server
 	addr := ":" + cfg.Server.Port
 	logging.Info("Server listening", map[string]interface{}{"address": addr})
