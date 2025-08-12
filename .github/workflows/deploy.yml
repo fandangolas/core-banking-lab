@@ -43,10 +43,26 @@ jobs:
     outputs:
       api-image: ${{ env.API_IMAGE }}
       dash-image: ${{ env.DASH_IMAGE }}
+      should-build: ${{ steps.changes.outputs.app }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for application changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'dev/dashboard/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Dockerfile.api'
+              - 'package*.json'
 
       - name: Set up QEMU (for multi-arch)
         uses: docker/setup-qemu-action@v3
@@ -81,6 +97,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push API image
+        if: steps.changes.outputs.app == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -97,6 +114,7 @@ jobs:
             type=gha,scope=api-arm64,mode=max
 
       - name: Build and push Dashboard image
+        if: steps.changes.outputs.app == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./dev/dashboard
