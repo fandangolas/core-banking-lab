@@ -1,8 +1,12 @@
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
