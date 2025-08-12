@@ -156,20 +156,31 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        shell: bash
         run: |
-          terraform plan -detailed-exitcode -out=tfplan
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          set +e
+          terraform plan -input=false -no-color -detailed-exitcode -out=tfplan
+          status=$?
+          echo "exitcode=$status" >> $GITHUB_OUTPUT
+          # 1 = error -> fail the job
+          if [ "$status" -eq 1 ]; then
+            echo "::error::Terraform plan failed (exit 1)"
+            exit 1
+          fi
+          # 0 = no changes, 2 = changes -> continue
+          exit 0
 
       - name: Terraform Apply
         id: apply
-        if: github.event.inputs.action != 'plan' && (github.event.inputs.action == 'deploy' || github.ref == 'refs/heads/main')
+        if: steps.plan.outputs.exitcode == '2' && (github.event.inputs.action != 'plan' && (github.event.inputs.action == 'deploy' || github.ref == 'refs/heads/main'))
         run: |
-          terraform apply -auto-approve tfplan
+          terraform apply -input=false -no-color -auto-approve tfplan
           echo "instance_public_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
 
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
-        run: terraform destroy -auto-approve
+        run: terraform destroy -input=false -no-color -auto-approve
+
 
   deploy:
     name: Deploy Application
