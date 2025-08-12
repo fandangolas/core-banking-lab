@@ -89,6 +89,24 @@
       with_fileglob:
         - "../../../k8s/*.yaml"
 
+    - name: Create image pull secret for GHCR
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ghcr-secret
+            namespace: banking
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ ('{ \"auths\": { \"ghcr.io\": { \"auth\": \"' + (github_actor + ':' + github_token) | b64encode + '\" } } }') | b64encode }}"
+        kubeconfig: /home/ubuntu/.kube/config
+      vars:
+        github_actor: "{{ ansible_env.GITHUB_ACTOR | default('fandangolas') }}"
+        github_token: "{{ ansible_env.GITHUB_TOKEN | default('') }}"
+      become_user: ubuntu
+
     - name: Apply Kubernetes manifests
       kubernetes.core.k8s:
         state: present

@@ -17,6 +17,8 @@ spec:
         app: banking-api
         component: backend
     spec:
+      imagePullSecrets:
+      - name: ghcr-secret
       containers:
       - name: banking-api
         image: banking-api:latest
