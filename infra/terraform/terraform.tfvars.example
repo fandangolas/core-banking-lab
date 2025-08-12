@@ -1,0 +1,17 @@
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Project Configuration
+project_name = "core-banking-lab"
+environment  = "dev"
+
+# Instance Configuration
+instance_type = "t4g.small"  # ARM-based, cost-effective
+volume_size   = 20           # GB
+
+# SSH Key (replace with your public key)
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-email@example.com"
+
+# Optional Domain Configuration
+# domain_name = "banking-lab.yourdomain.com"
+# create_route53_zone = true

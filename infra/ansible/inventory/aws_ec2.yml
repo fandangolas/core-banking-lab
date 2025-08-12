@@ -1,0 +1,18 @@
+---
+plugin: aws_ec2
+regions:
+  - us-east-1
+filters:
+  tag:Project: core-banking-lab
+  instance-state-name: running
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: tags.Type
+    prefix: type
+  - key: instance_type
+    prefix: instance_type
+hostnames:
+  - ip-address
+compose:
+  ansible_host: public_ip_address
