@@ -151,6 +151,15 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Import existing key pair if it exists
+        run: |
+          if aws ec2 describe-key-pairs --key-names core-banking-lab-key --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Key pair exists, importing to Terraform state..."
+            terraform import aws_key_pair.main core-banking-lab-key || echo "Key pair already in state or import failed"
+          else
+            echo "Key pair does not exist, Terraform will create it"
+          fi
+
       - name: Terraform Validate
         run: terraform validate
 
