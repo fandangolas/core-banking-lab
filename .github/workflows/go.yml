@@ -10,6 +10,7 @@ on:
       - 'src/**'
       - 'go.mod'
       - 'go.sum'
+      - '.github/workflows/go.yml'
 
 jobs:
 
