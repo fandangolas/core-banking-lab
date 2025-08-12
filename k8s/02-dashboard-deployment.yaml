@@ -17,6 +17,8 @@ spec:
         app: banking-dashboard
         component: frontend
     spec:
+      imagePullSecrets:
+      - name: ghcr-secret
       containers:
       - name: banking-dashboard
         image: banking-dashboard:latest
