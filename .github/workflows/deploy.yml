@@ -142,14 +142,14 @@ jobs:
       - name: Create terraform.tfvars
         shell: bash
         run: |
-          {
-            echo "aws_region   = \"${{ env.AWS_REGION }}\""
-            echo "project_name = \"${{ env.PROJECT_NAME }}\""
-            echo "environment  = \"${{ github.event.inputs.environment || 'dev' }}\""
-            echo "instance_type = \"t4g.small\""
-            echo "volume_size   = 20"
-            echo "ssh_public_key = \"${{ secrets.SSH_PUBLIC_KEY }}\""
-          } > terraform.tfvars
+          cat > terraform.tfvars << 'EOF'
+          aws_region   = "${{ env.AWS_REGION }}"
+          project_name = "${{ env.PROJECT_NAME }}"
+          environment  = "${{ github.event.inputs.environment || 'dev' }}"
+          instance_type = "t4g.small"
+          volume_size   = 20
+          ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6zBHOSBvsWVbj8Kla4OkGO5Av0ygG+mL2u/q22mm8oXQCV0I5qNtn4bhYLOmJvNu/8d9nhjoNEWYTa1oFL6pORaQnREUEtJ9lZe3j/riSQFGRkmpKAAHXDB7tUXfRAQJV8ia8R7pjOoxSxPZ0XJLR+wIl26d3RYXIbv92hMqr7a4qOpC05ssFvXmnIf1DMLnhc/lqdnplkBIyjDFooH0KLVp1Yy00l/KnOAGLIwmrZpPhkp5gQesVKFlhtLvOIWLiza9+46bJ2/KIUGjZ7BvPkq0w75njYMP9CzifneKDNS9cpb0j9B6NciHfiNXu8aauaSG8HVCEgrfr+hFTFBL3iwRc5UWrnqU27+/NgDTQuYHX9vsQ+msADKVtCrgikGj+HiiAFiordSjp++wI+toq+qny6vtIpOyJJPO8q2iCL6npg+IdJ9qLVOxsjQuMnWecAejsroouW21rgU7e3MsjZfIMxXE7mlhD+6F3kqhXdDrcwRoNtN8I2R3wjmPO7OgTXncQBFpTpxqkgFI9w1ldT4wkzTnygHF0WGsPKAWp5DqZ8G5Nf3ZaQlyXYV1HrP3osYMCwp4Lf0IfBVX1jjVhVFhs2AFPdaDpZ2OV02Yvd2GFQnn1O9H4IC60q3Mf5QTGdO/prA4n1oTiChgtKgYUDJtSVHzYPdjqmU2ql8LwZw== core-banking-lab-aws-deployment"
+          EOF
 
       - name: Terraform Init
         run: terraform init
