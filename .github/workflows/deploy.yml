@@ -15,76 +15,90 @@ on:
         required: true
         default: 'dev'
         type: choice
-        options:
-          - dev
-          - staging
-          - prod
+        options: [dev, staging, prod]
       action:
         description: 'Action to perform'
         required: true
         default: 'deploy'
         type: choice
-        options:
-          - plan
-          - deploy
-          - destroy
+        options: [plan, deploy, destroy]
+
+# Needed for GHCR push with GITHUB_TOKEN/PAT
+permissions:
+  contents: read
+  packages: write
 
 env:
   AWS_REGION: us-east-1
   PROJECT_NAME: core-banking-lab
+  IMAGE_OWNER: ${{ github.repository_owner }}
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/core-banking-lab/banking-api
+  DASH_IMAGE: ghcr.io/${{ github.repository_owner }}/core-banking-lab/banking-dashboard
 
 jobs:
   build:
     name: Build and Push Images
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      
+      api-image: ${{ env.API_IMAGE }}
+      dash-image: ${{ env.DASH_IMAGE }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up QEMU (for multi-arch)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GHCR (PAT)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
-      - name: Extract metadata
-        id: meta
+      # Optional: generate semver/sha/latest tags once, if you want more than :sha
+      - name: Extract metadata for API
+        id: meta_api
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/${{ github.repository }}/banking-api
-            ghcr.io/${{ github.repository }}/banking-dashboard
+          images: ${{ env.API_IMAGE }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for Dashboard
+        id: meta_dash
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DASH_IMAGE }}
+          tags: |
+            type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push API image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.api
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository }}/banking-api:${{ github.sha }}
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build and push Dashboard image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./dev/dashboard
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository }}/banking-dashboard:${{ github.sha }}
+          tags: ${{ steps.meta_dash.outputs.tags }}
+          labels: ${{ steps.meta_dash.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -96,10 +110,9 @@ jobs:
     defaults:
       run:
         working-directory: infra/terraform
-        
     outputs:
       instance-ip: ${{ steps.apply.outputs.instance_public_ip }}
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -158,13 +171,13 @@ jobs:
     defaults:
       run:
         working-directory: infra/ansible
-        
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -198,9 +211,8 @@ jobs:
 
       - name: Update Kubernetes manifests with new images
         run: |
-          # Update image tags in Kubernetes manifests
-          sed -i 's|image: banking-api:latest|image: ghcr.io/${{ github.repository }}/banking-api:${{ github.sha }}|g' ../../k8s/01-api-deployment.yaml
-          sed -i 's|image: banking-dashboard:latest|image: ghcr.io/${{ github.repository }}/banking-dashboard:${{ github.sha }}|g' ../../k8s/02-dashboard-deployment.yaml
+          sed -i 's|image: banking-api:latest|image: '"${API_IMAGE}"':'"${{ github.sha }}"'|g' ../../k8s/01-api-deployment.yaml
+          sed -i 's|image: banking-dashboard:latest|image: '"${DASH_IMAGE}"':'"${{ github.sha }}"'|g' ../../k8s/02-dashboard-deployment.yaml
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' ../../k8s/*.yaml
 
       - name: Run Ansible playbook
