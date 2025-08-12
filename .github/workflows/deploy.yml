@@ -166,7 +166,7 @@ jobs:
           environment  = "${{ github.event.inputs.environment || 'dev' }}"
           instance_type = "t4g.small"
           volume_size   = 20
-          ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6zBHOSBvsWVbj8Kla4OkGO5Av0ygG+mL2u/q22mm8oXQCV0I5qNtn4bhYLOmJvNu/8d9nhjoNEWYTa1oFL6pORaQnREUEtJ9lZe3j/riSQFGRkmpKAAHXDB7tUXfRAQJV8ia8R7pjOoxSxPZ0XJLR+wIl26d3RYXIbv92hMqr7a4qOpC05ssFvXmnIf1DMLnhc/lqdnplkBIyjDFooH0KLVp1Yy00l/KnOAGLIwmrZpPhkp5gQesVKFlhtLvOIWLiza9+46bJ2/KIUGjZ7BvPkq0w75njYMP9CzifneKDNS9cpb0j9B6NciHfiNXu8aauaSG8HVCEgrfr+hFTFBL3iwRc5UWrnqU27+/NgDTQuYHX9vsQ+msADKVtCrgikGj+HiiAFiordSjp++wI+toq+qny6vtIpOyJJPO8q2iCL6npg+IdJ9qLVOxsjQuMnWecAejsroouW21rgU7e3MsjZfIMxXE7mlhD+6F3kqhXdDrcwRoNtN8I2R3wjmPO7OgTXncQBFpTpxqkgFI9w1ldT4wkzTnygHF0WGsPKAWp5DqZ8G5Nf3ZaQlyXYV1HrP3osYMCwp4Lf0IfBVX1jjVhVFhs2AFPdaDpZ2OV02Yvd2GFQnn1O9H4IC60q3Mf5QTGdO/prA4n1oTiChgtKgYUDJtSVHzYPdjqmU2ql8LwZw== core-banking-lab-aws-deployment"
+          ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC4Gf/5OQ1Vov/xoiS17cGKK50AQrwV//Tk9I2YClMCxHKCN/KYDMDUELZ5HFIUA3zDiw/SVcBSvF1U+cXvQnCRnajMJyeohG4AIgrKcov5aeVBRUDevOcVZswXhVIWumXiPTQfv2E0PCVrsIhaXe8g4PPqB5MCPpsaMVcL3/czxaZN9pPbdVzYnXSMgjm2p2AQK7iFDrDfaLAR0R+0qI7i+ln4kjji7t19CgkV/FIzulhAH8s3AK2AhD2zrWbTZko8FHkCwGTBx9sxZ+AdmmXcDCQmfmhvA9ympAbvOD9jNK/mPH/hisgbpR45TS5w04cjSHZYYhGN2DlNO2QtNThkmNrgPPAunZyMWcLEtvvzB4URrAHOlL7MwsJCASJkU+oSv25k5P5m6FArZ87VthVc9wNP+eke5R+V7ZPdjq3u6B2zG/b7+7uQ8vSGPmXaoPTvbjt2fbELSG1IVtwti/ctndIvngYDiW2mwR2gR6Qano9+GlDJiJpDUJLGwfpNCHD1lt3NIiFilTNvN8d3qMWHU9vnvgcwKA8ZmWW2nwqbMONVNAk8Iagg71ucNrVZJCQMdOwsO9m0pSGTPpc//ONNOii+wksXdx51FRf7XT6b5KH++I9DDylzrwoKr942s7uF+blvecj8AuNv3joswUPMTuy7buPlR03n48UvjusqYw== core-banking-lab-deployment"
           EOF
 
       - name: Terraform Init
