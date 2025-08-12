@@ -8,6 +8,7 @@ on:
       - 'dev/dashboard/**'
       - 'k8s/**'
       - 'infra/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
