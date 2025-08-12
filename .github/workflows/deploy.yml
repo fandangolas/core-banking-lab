@@ -131,13 +131,22 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Create terraform.tfvars
+        shell: bash
         run: |
-          cat > terraform.tfvars << EOF
-          aws_region = "${{ env.AWS_REGION }}"
-          project_name = "${{ env.PROJECT_NAME }}"
-          environment = "${{ github.event.inputs.environment || 'dev' }}"
-          ssh_public_key = "${{ secrets.SSH_PUBLIC_KEY }}"
-          EOF
+          {
+            echo "aws_region   = \"${{ env.AWS_REGION }}\""
+            echo "project_name = \"${{ env.PROJECT_NAME }}\""
+            echo "environment  = \"${{ github.event.inputs.environment || 'dev' }}\""
+            echo "instance_type = \"t4g.small\""
+            echo "volume_size   = 20"
+            echo "ssh_public_key = <<EOKEY"
+          } > terraform.tfvars
+
+          # Append the public key from secrets exactly as stored (supports multi-line)
+          printf '%s\n' "${{ secrets.SSH_PUBLIC_KEY }}" >> terraform.tfvars
+
+          # Close heredoc marker at column 1
+          echo "EOKEY" >> terraform.tfvars
 
       - name: Terraform Init
         run: terraform init
