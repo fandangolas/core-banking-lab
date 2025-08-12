@@ -327,8 +327,8 @@ jobs:
 
       - name: Update Kubernetes manifests with new images
         run: |
-          sed -i 's|image: banking-api:latest|image: '"${API_IMAGE}"':'"${{ github.sha }}"'|g' ../../k8s/01-api-deployment.yaml
-          sed -i 's|image: banking-dashboard:latest|image: '"${DASH_IMAGE}"':'"${{ github.sha }}"'|g' ../../k8s/02-dashboard-deployment.yaml
+          sed -i 's|image: banking-api:latest|image: '"${API_IMAGE}"':sha-'"${{ github.sha }}"'|g' ../../k8s/01-api-deployment.yaml
+          sed -i 's|image: banking-dashboard:latest|image: '"${DASH_IMAGE}"':sha-'"${{ github.sha }}"'|g' ../../k8s/02-dashboard-deployment.yaml
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' ../../k8s/*.yaml
 
       - name: Run Ansible playbook
