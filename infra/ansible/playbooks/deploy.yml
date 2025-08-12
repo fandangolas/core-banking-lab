@@ -1,0 +1,120 @@
+---
+- name: Deploy Core Banking Lab to k3s
+  hosts: type_k3s_node
+  become: yes
+  gather_facts: yes
+  vars:
+    k3s_version: "v1.31.5+k3s1"
+    app_dir: "/opt/banking-app"
+    docker_registry: "ghcr.io"  # Change to your registry
+    image_tag: "{{ ansible_date_time.epoch }}"
+    
+  tasks:
+    - name: Wait for instance to be ready
+      wait_for_connection:
+        timeout: 300
+
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+        cache_valid_time: 3600
+
+    - name: Install k3s
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - \
+          --write-kubeconfig-mode 644 \
+          --disable traefik \
+          --disable servicelb
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready
+      wait_for:
+        port: 6443
+        host: localhost
+        timeout: 120
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy kubeconfig to ubuntu user
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ubuntu/.kube/config
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+        remote_src: yes
+
+    - name: Create .kube directory for ubuntu user
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Install Helm
+      shell: |
+        curl https://get.helm.sh/helm-v3.12.0-linux-arm64.tar.gz | tar -xzO linux-arm64/helm > /usr/local/bin/helm
+        chmod +x /usr/local/bin/helm
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Copy Kubernetes manifests
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_dir }}/{{ item | basename }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      with_fileglob:
+        - "../../../k8s/*.yaml"
+
+    - name: Apply Kubernetes manifests
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ app_dir }}/{{ item }}"
+        kubeconfig: /home/ubuntu/.kube/config
+      with_items:
+        - "00-namespace.yaml"
+        - "01-api-deployment.yaml"
+        - "02-dashboard-deployment.yaml"
+        - "03-monitoring-deployment.yaml"
+      become_user: ubuntu
+
+    - name: Wait for pods to be ready
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: banking
+        kubeconfig: /home/ubuntu/.kube/config
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: 300
+      become_user: ubuntu
+
+    - name: Get application status
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: banking
+        kubeconfig: /home/ubuntu/.kube/config
+      register: services
+      become_user: ubuntu
+
+    - name: Display application URLs
+      debug:
+        msg: |
+          Banking API: http://{{ ansible_host }}:8080
+          Dashboard: http://{{ ansible_host }}:3000
+          Prometheus: http://{{ ansible_host }}:9090
+          Grafana: http://{{ ansible_host }}:3001

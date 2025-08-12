@@ -1,0 +1,219 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'dev/dashboard/**'
+      - 'k8s/**'
+      - 'infra/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - plan
+          - deploy
+          - destroy
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT_NAME: core-banking-lab
+
+jobs:
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}/banking-api
+            ghcr.io/${{ github.repository }}/banking-dashboard
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.api
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}/banking-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Dashboard image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./dev/dashboard
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}/banking-dashboard:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    needs: build
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: infra/terraform
+        
+    outputs:
+      instance-ip: ${{ steps.apply.outputs.instance_public_ip }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create terraform.tfvars
+        run: |
+          cat > terraform.tfvars << EOF
+          aws_region = "${{ env.AWS_REGION }}"
+          project_name = "${{ env.PROJECT_NAME }}"
+          environment = "${{ github.event.inputs.environment || 'dev' }}"
+          ssh_public_key = "${{ secrets.SSH_PUBLIC_KEY }}"
+          EOF
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -detailed-exitcode -out=tfplan
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+
+      - name: Terraform Apply
+        id: apply
+        if: github.event.inputs.action != 'plan' && (github.event.inputs.action == 'deploy' || github.ref == 'refs/heads/main')
+        run: |
+          terraform apply -auto-approve tfplan
+          echo "instance_public_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
+
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
+
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [build, terraform]
+    if: needs.terraform.outputs.instance-ip && github.event.inputs.action != 'destroy'
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: infra/ansible
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible and dependencies
+        run: |
+          pip install ansible boto3 botocore kubernetes
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/core-banking-lab-key
+          chmod 600 ~/.ssh/core-banking-lab-key
+
+      - name: Wait for SSH to be ready
+        run: |
+          for i in {1..30}; do
+            if ssh -i ~/.ssh/core-banking-lab-key -o ConnectTimeout=5 -o StrictHostKeyChecking=no ubuntu@${{ needs.terraform.outputs.instance-ip }} echo "SSH Ready"; then
+              break
+            fi
+            echo "Waiting for SSH... (attempt $i/30)"
+            sleep 10
+          done
+
+      - name: Update Kubernetes manifests with new images
+        run: |
+          # Update image tags in Kubernetes manifests
+          sed -i 's|image: banking-api:latest|image: ghcr.io/${{ github.repository }}/banking-api:${{ github.sha }}|g' ../../k8s/01-api-deployment.yaml
+          sed -i 's|image: banking-dashboard:latest|image: ghcr.io/${{ github.repository }}/banking-dashboard:${{ github.sha }}|g' ../../k8s/02-dashboard-deployment.yaml
+          sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' ../../k8s/*.yaml
+
+      - name: Run Ansible playbook
+        run: |
+          ansible-playbook -i inventory/aws_ec2.yml playbooks/deploy.yml \
+            --extra-vars "target_host=${{ needs.terraform.outputs.instance-ip }}"
+
+      - name: Display deployment information
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "📍 Instance IP: ${{ needs.terraform.outputs.instance-ip }}"
+          echo "🔗 Application URLs:"
+          echo "   • Banking API: http://${{ needs.terraform.outputs.instance-ip }}:8080"
+          echo "   • Dashboard: http://${{ needs.terraform.outputs.instance-ip }}:3000"
+          echo "   • Prometheus: http://${{ needs.terraform.outputs.instance-ip }}:9090"
+          echo "   • Grafana: http://${{ needs.terraform.outputs.instance-ip }}:3001"

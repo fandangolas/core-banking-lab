@@ -1,0 +1,60 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:AttachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:GetRole",
+        "iam:GetInstanceProfile",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:DeleteRole",
+        "iam:DetachRolePolicy",
+        "iam:DeleteInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/core-banking-lab-*",
+        "arn:aws:iam::*:instance-profile/core-banking-lab-*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::*:role/core-banking-lab-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "ec2.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:GetHostedZone",
+        "route53:ListHostedZones",
+        "route53:ChangeResourceRecordSets",
+        "route53:GetChange",
+        "route53:ListResourceRecordSets"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
