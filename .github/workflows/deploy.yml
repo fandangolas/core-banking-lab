@@ -286,14 +286,36 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/core-banking-lab-key
           chmod 600 ~/.ssh/core-banking-lab-key
+          chmod 700 ~/.ssh
+          # Verify key format and permissions
+          ls -la ~/.ssh/core-banking-lab-key
+          file ~/.ssh/core-banking-lab-key || echo "File command not available"
+          # Test key validation
+          ssh-keygen -y -f ~/.ssh/core-banking-lab-key > /dev/null && echo "SSH key is valid" || echo "SSH key validation failed"
 
       - name: Wait for SSH to be ready
         run: |
+          # Add SSH config for better debugging
+          cat > ~/.ssh/config << 'EOF'
+          Host *
+              StrictHostKeyChecking no
+              UserKnownHostsFile /dev/null
+              LogLevel ERROR
+          EOF
+          
+          echo "Testing SSH connection to ${{ needs.terraform.outputs.instance-ip }}"
           for i in {1..30}; do
-            if ssh -i ~/.ssh/core-banking-lab-key -o ConnectTimeout=5 -o StrictHostKeyChecking=no ubuntu@${{ needs.terraform.outputs.instance-ip }} echo "SSH Ready"; then
+            if ssh -i ~/.ssh/core-banking-lab-key -o ConnectTimeout=10 -v ubuntu@${{ needs.terraform.outputs.instance-ip }} echo "SSH Ready" 2>&1; then
+              echo "SSH connection successful on attempt $i"
               break
             fi
             echo "Waiting for SSH... (attempt $i/30)"
+            if [ $i -eq 30 ]; then
+              echo "Final attempt failed. Checking key and connection details:"
+              ssh-keygen -y -f ~/.ssh/core-banking-lab-key || echo "Private key validation failed"
+              nc -zv ${{ needs.terraform.outputs.instance-ip }} 22 || echo "Port 22 not reachable"
+              exit 1
+            fi
             sleep 10
           done
 
