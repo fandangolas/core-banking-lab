@@ -240,9 +240,15 @@ jobs:
 
       - name: Terraform Apply
         id: apply
-        if: steps.plan.outputs.exitcode == '2' && (github.event.inputs.action != 'plan' && (github.event.inputs.action == 'deploy' || github.ref == 'refs/heads/main'))
+        if: (steps.plan.outputs.exitcode == '2' || needs.build.outputs.should-build == 'true') && (github.event.inputs.action != 'plan' && (github.event.inputs.action == 'deploy' || github.ref == 'refs/heads/main'))
         run: |
-          terraform apply -input=false -no-color -auto-approve tfplan
+          if [ "${{ steps.plan.outputs.exitcode }}" == "2" ]; then
+            echo "Infrastructure changes detected - applying terraform plan"
+            terraform apply -input=false -no-color -auto-approve tfplan
+          else
+            echo "No infrastructure changes but new images built - ensuring infrastructure is ready"
+            terraform apply -input=false -no-color -auto-approve -refresh-only
+          fi
           echo "instance_public_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
 
       - name: Terraform Destroy
@@ -254,7 +260,7 @@ jobs:
     name: Deploy Application
     runs-on: ubuntu-latest
     needs: [build, terraform]
-    if: needs.terraform.outputs.instance-ip && github.event.inputs.action != 'destroy'
+    if: needs.terraform.outputs.instance-ip && github.event.inputs.action != 'destroy' && (needs.build.outputs.should-build == 'true' || needs.terraform.result == 'success')
     environment: ${{ github.event.inputs.environment || 'dev' }}
     defaults:
       run:
