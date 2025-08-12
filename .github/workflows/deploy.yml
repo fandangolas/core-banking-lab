@@ -8,6 +8,7 @@ on:
       - 'dev/dashboard/**'
       - 'k8s/**'
       - 'infra/**'
+      - 'infra/terraform/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -88,8 +89,12 @@ jobs:
           push: true
           tags: ${{ steps.meta_api.outputs.tags }}
           labels: ${{ steps.meta_api.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=api-amd64
+            type=gha,scope=api-arm64
+          cache-to: |
+            type=gha,scope=api-amd64,mode=max
+            type=gha,scope=api-arm64,mode=max
 
       - name: Build and push Dashboard image
         uses: docker/build-push-action@v6
@@ -99,8 +104,12 @@ jobs:
           push: true
           tags: ${{ steps.meta_dash.outputs.tags }}
           labels: ${{ steps.meta_dash.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=dash-amd64
+            type=gha,scope=dash-arm64
+          cache-to: |
+            type=gha,scope=dash-amd64,mode=max
+            type=gha,scope=dash-arm64,mode=max
 
   terraform:
     name: Terraform
