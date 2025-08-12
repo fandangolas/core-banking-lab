@@ -30,12 +30,17 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-22.04-lts-arm64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
   }
 
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
   }
 }
 
@@ -144,6 +149,15 @@ resource "aws_security_group" "k3s" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     description = "Banking API"
+  }
+
+  # NodePort range for Kubernetes services
+  ingress {
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Kubernetes NodePort range"
   }
 
   # Dashboard

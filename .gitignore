@@ -33,3 +33,10 @@ go.work.sum
 
 # Node
 node_modules/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars

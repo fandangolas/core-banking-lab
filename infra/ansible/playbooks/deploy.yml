@@ -1,6 +1,6 @@
 ---
 - name: Deploy Core Banking Lab to k3s
-  hosts: type_k3s_node
+  hosts: all
   become: yes
   gather_facts: yes
   vars:
