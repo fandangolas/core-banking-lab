@@ -24,7 +24,7 @@ func main() {
 	// Initialize database
 	database.Init()
 
-	// Setup router with middleware
+	// Setup router with middleware - testing new GHCR PAT token
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
 	router.Use(middleware.RateLimit(cfg))
