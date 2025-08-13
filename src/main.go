@@ -24,7 +24,7 @@ func main() {
 	// Initialize database
 	database.Init()
 
-	// Setup router with middleware - fixed CORS with relative URLs
+	// Setup router with middleware - testing Grafana dashboards deployment
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
 	//router.Use(middleware.RateLimit(cfg))
