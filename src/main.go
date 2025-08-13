@@ -24,7 +24,7 @@ func main() {
 	// Initialize database
 	database.Init()
 
-	// Setup router with middleware - testing dashboard API connection fix
+	// Setup router with middleware - testing cors allowing everything in dev env
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
 	//router.Use(middleware.RateLimit(cfg))

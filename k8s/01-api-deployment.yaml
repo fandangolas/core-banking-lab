@@ -33,6 +33,8 @@ spec:
           value: "0.0.0.0"
         - name: RATE_LIMIT_REQUESTS_PER_MINUTE
           value: "2000"
+        - name: CORS_ALLOWED_ORIGINS
+          value: "*"
         livenessProbe:
           httpGet:
             path: /prometheus
