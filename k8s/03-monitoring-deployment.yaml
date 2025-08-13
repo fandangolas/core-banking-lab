@@ -134,6 +134,11 @@ spec:
         - name: grafana-datasource
           mountPath: /etc/grafana/provisioning/datasources/prometheus.yml
           subPath: prometheus.yml
+        - name: grafana-dashboard-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
+          subPath: dashboards.yml
+        - name: grafana-dashboards
+          mountPath: /var/lib/grafana/dashboards
         - name: grafana-storage
           mountPath: /var/lib/grafana
         resources:
@@ -147,6 +152,12 @@ spec:
       - name: grafana-datasource
         configMap:
           name: grafana-datasource
+      - name: grafana-dashboard-provisioning
+        configMap:
+          name: grafana-dashboard-provisioning
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
       - name: grafana-storage
         emptyDir: {}
 ---
