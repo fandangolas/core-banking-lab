@@ -24,7 +24,7 @@ func main() {
 	// Initialize database
 	database.Init()
 
-	// Setup router with middleware - testing kubernetes metrics into grafana
+	// Setup router with middleware - testing kubernetes metrics into grafana, again
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
 	//router.Use(middleware.RateLimit(cfg))
