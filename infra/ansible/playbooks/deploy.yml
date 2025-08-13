@@ -160,7 +160,7 @@
     - name: Display application URLs
       debug:
         msg: |
-          Banking API: http://{{ ansible_host }}:8080
-          Dashboard: http://{{ ansible_host }}:3000
-          Prometheus: http://{{ ansible_host }}:9090
-          Grafana: http://{{ ansible_host }}:3001
+          Banking API: http://{{ ansible_host }}:30080
+          Dashboard: http://{{ ansible_host }}:30000
+          Prometheus: http://{{ ansible_host }}:30090
+          Grafana: http://{{ ansible_host }}:30030
