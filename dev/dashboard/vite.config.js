@@ -6,7 +6,10 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      '/metrics': 'http://api:8080'
+      '/metrics': {
+        target: process.env.VITE_API_URL || 'http://banking-api-service:8080',
+        changeOrigin: true
+      }
     }
   }
 });
