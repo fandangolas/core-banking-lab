@@ -117,6 +117,8 @@
         - "01-api-deployment.yaml"
         - "02-dashboard-deployment.yaml"
         - "03-monitoring-deployment.yaml"
+        - "04-grafana-dashboards.yaml"
+        - "05-kube-state-metrics.yaml"
       become_user: ubuntu
 
     - name: Wait for pods to be ready (with graceful failure handling)

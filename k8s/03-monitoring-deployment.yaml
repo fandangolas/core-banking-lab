@@ -56,6 +56,12 @@ data:
           - targets: ['banking-api-service:8080']
         scrape_interval: 5s
 
+      # Kube-state-metrics for Kubernetes object metrics
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics:8080']
+        scrape_interval: 5s
+
       # Kubernetes API server metrics
       - job_name: 'kubernetes-apiservers'
         kubernetes_sd_configs:
