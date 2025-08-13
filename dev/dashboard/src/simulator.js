@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Use relative URLs to go through Vite proxy in development
+// In production, this would be configured differently
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function request(url, options = {}) {
   const res = await fetch(`${BASE_URL}${url}`, {
