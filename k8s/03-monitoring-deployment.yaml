@@ -85,6 +85,19 @@ spec:
     app: prometheus
 ---
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: banking
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: gp2
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasource
@@ -130,6 +143,8 @@ spec:
           value: "admin123"
         - name: GF_USERS_ALLOW_SIGN_UP
           value: "false"
+        - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+          value: "/var/lib/grafana/dashboards/banking-overview.json"
         volumeMounts:
         - name: grafana-datasource
           mountPath: /etc/grafana/provisioning/datasources/prometheus.yml
@@ -159,7 +174,8 @@ spec:
         configMap:
           name: grafana-dashboards
       - name: grafana-storage
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: grafana-pvc
 ---
 apiVersion: v1
 kind: Service
