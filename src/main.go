@@ -24,7 +24,7 @@ func main() {
 	// Initialize database
 	database.Init()
 
-	// Setup router with middleware - testing image tag naming fix
+	// Setup router with middleware - testing Ansible pod wait fix
 	router := gin.Default()
 	router.Use(middleware.CORS(cfg))
 	//router.Use(middleware.RateLimit(cfg))
