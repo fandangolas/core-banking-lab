@@ -1,0 +1,301 @@
+---
+- name: Deploy Core Banking Lab with Helm-based monitoring
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    k3s_version: "v1.31.5+k3s1"
+    app_dir: "/opt/banking-app"
+    docker_registry: "ghcr.io"
+    image_tag: "{{ ansible_date_time.epoch }}"
+    helm_repo_name: "prometheus-community"
+    helm_repo_url: "https://prometheus-community.github.io/helm-charts"
+    helm_chart_version: "58.0.0"  # Latest stable version as of 2024
+    
+  tasks:
+    - name: Wait for instance to be ready
+      wait_for_connection:
+        timeout: 300
+
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+        cache_valid_time: 3600
+
+    - name: Install k3s
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - \
+          --write-kubeconfig-mode 644 \
+          --disable traefik \
+          --disable servicelb
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready
+      wait_for:
+        port: 6443
+        host: localhost
+        timeout: 120
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Create .kube directory for ubuntu user
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy kubeconfig to ubuntu user
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ubuntu/.kube/config
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+        remote_src: yes
+
+    - name: Install Python pip and kubernetes library
+      apt:
+        name: 
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install kubernetes Python library
+      pip:
+        name: kubernetes
+        state: present
+
+    - name: Install Helm
+      shell: |
+        curl https://get.helm.sh/helm-v3.12.0-linux-arm64.tar.gz | tar -xzO linux-arm64/helm > /usr/local/bin/helm
+        chmod +x /usr/local/bin/helm
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Create core-banking namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: core-banking
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
+    - name: Copy application manifests
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_dir }}/{{ item | basename }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      with_items:
+        - "../../../k8s/01-api-deployment.yaml"
+        - "../../../k8s/02-dashboard-deployment.yaml"
+
+    - name: Copy Helm values file
+      copy:
+        src: "../../../k8s/helm-values/kube-prometheus-stack-values.yaml"
+        dest: "{{ app_dir }}/kube-prometheus-stack-values.yaml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Copy Grafana dashboard ConfigMaps
+      copy:
+        src: "{{ item }}"
+        dest: "{{ app_dir }}/{{ item | basename }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+      with_fileglob:
+        - "../../../k8s/*dashboard*.yaml"
+        - "../../../k8s/*dashboard*.json"
+
+    - name: Create image pull secret for GHCR
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ghcr-secret
+            namespace: core-banking
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ ('{ \"auths\": { \"ghcr.io\": { \"auth\": \"' + (github_actor + ':' + github_token) | b64encode + '\" } } }') | b64encode }}"
+        kubeconfig: /home/ubuntu/.kube/config
+      vars:
+        github_actor: "{{ github_actor }}"
+        github_token: "{{ github_token }}"
+      become_user: ubuntu
+
+    - name: Deploy banking API and dashboard
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ app_dir }}/{{ item }}"
+        kubeconfig: /home/ubuntu/.kube/config
+      with_items:
+        - "01-api-deployment.yaml"
+        - "02-dashboard-deployment.yaml"
+      become_user: ubuntu
+
+    - name: Add Prometheus community Helm repository
+      kubernetes.core.helm_repository:
+        name: "{{ helm_repo_name }}"
+        repo_url: "{{ helm_repo_url }}"
+        state: present
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
+    - name: Update Helm repositories
+      shell: |
+        export KUBECONFIG=/home/ubuntu/.kube/config
+        helm repo update
+      become_user: ubuntu
+
+    - name: Deploy kube-prometheus-stack using Helm
+      kubernetes.core.helm:
+        name: kube-prometheus-stack
+        chart_ref: "{{ helm_repo_name }}/kube-prometheus-stack"
+        release_namespace: core-banking
+        create_namespace: false
+        values_files:
+          - "{{ app_dir }}/kube-prometheus-stack-values.yaml"
+        chart_version: "{{ helm_chart_version }}"
+        state: present
+        wait: true
+        wait_timeout: 10m
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
+    - name: Create ConfigMap for banking dashboards
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: grafana-banking-dashboards
+            namespace: core-banking
+            labels:
+              grafana_dashboard: "1"
+          data:
+            banking-dashboard.json: |
+              {{ lookup('file', '../../../k8s/kubernetes-full-stack-dashboard.json') | default('{}') }}
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+      when: "'kubernetes-full-stack-dashboard.json' in lookup('fileglob', '../../../k8s/*.json', wantlist=True) | map('basename') | list"
+
+    - name: Patch Grafana service for external access
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: kube-prometheus-stack-grafana-lb
+            namespace: core-banking
+          spec:
+            type: NodePort
+            ports:
+              - port: 80
+                targetPort: 3000
+                nodePort: 30030
+                protocol: TCP
+                name: http
+            selector:
+              app.kubernetes.io/instance: kube-prometheus-stack
+              app.kubernetes.io/name: grafana
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
+    - name: Patch Prometheus service for external access
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: kube-prometheus-stack-prometheus-lb
+            namespace: core-banking
+          spec:
+            type: NodePort
+            ports:
+              - port: 9090
+                targetPort: 9090
+                nodePort: 30090
+                protocol: TCP
+                name: http
+            selector:
+              app.kubernetes.io/name: prometheus
+              prometheus: kube-prometheus-stack-prometheus
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
+    - name: Wait for pods to be ready
+      shell: |
+        export KUBECONFIG=/home/ubuntu/.kube/config
+        echo "Waiting for pods to be ready..."
+        
+        for i in {1..60}; do
+          RUNNING_PODS=$(kubectl get pods -n core-banking --no-headers | grep "Running" | wc -l)
+          TOTAL_PODS=$(kubectl get pods -n core-banking --no-headers | wc -l)
+          
+          echo "Attempt $i/60: $RUNNING_PODS/$TOTAL_PODS pods running"
+          
+          if [ "$RUNNING_PODS" -eq "$TOTAL_PODS" ] && [ "$TOTAL_PODS" -gt 0 ]; then
+            echo "All pods are running successfully!"
+            kubectl get pods -n core-banking
+            break
+          fi
+          
+          if [ $i -eq 60 ]; then
+            echo "Timeout waiting for pods. Current status:"
+            kubectl get pods -n core-banking
+            kubectl describe pods -n core-banking | grep -A 5 "Events:"
+          fi
+          
+          sleep 5
+        done
+      become_user: ubuntu
+
+    - name: Get application status
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: core-banking
+        kubeconfig: /home/ubuntu/.kube/config
+      register: services
+      become_user: ubuntu
+
+    - name: Display application URLs
+      debug:
+        msg: |
+          Banking API: http://{{ ansible_host }}:30080
+          Dashboard: http://{{ ansible_host }}:30000
+          Prometheus: http://{{ ansible_host }}:30090
+          Grafana: http://{{ ansible_host }}:30030
+          
+          Default Grafana credentials:
+          Username: admin
+          Password: admin
+          
+          The following metrics are now available:
+          - Node-level metrics (CPU, Memory, Disk, Network)
+          - Container and pod metrics
+          - Kubernetes object state metrics
+          - Banking API custom metrics
+          - Full cluster observability
