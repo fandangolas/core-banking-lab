@@ -46,7 +46,7 @@ func Withdraw(c *gin.Context) {
 	database.Repo.UpdateAccount(account)
 
 	balance := domain.GetBalance(account)
-	
+
 	// Record successful operation and metrics
 	metrics.RecordBankingOperation("withdraw", "success")
 	metrics.RecordAccountBalance(float64(balance))

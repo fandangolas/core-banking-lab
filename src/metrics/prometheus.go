@@ -181,7 +181,7 @@ func UpdateSystemMetrics() {
 	// Update memory metrics
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
+
 	MemoryUsageGauge.WithLabelValues("heap").Set(float64(m.HeapInuse))
 	MemoryUsageGauge.WithLabelValues("stack").Set(float64(m.StackInuse))
 	MemoryUsageGauge.WithLabelValues("sys").Set(float64(m.Sys))
@@ -210,7 +210,7 @@ func UpdateSystemMetrics() {
 // updateCPUMetrics collects CPU usage and throttling metrics
 func updateCPUMetrics() {
 	now := time.Now()
-	
+
 	// Initialize on first run
 	if lastCPUTime.IsZero() {
 		lastCPUTime = now
@@ -231,16 +231,16 @@ func updateCPUMetrics() {
 	// Note: This is an approximation since Go doesn't expose direct CPU usage
 	activeGoroutines := float64(runtime.NumGoroutine())
 	numCPU := float64(runtime.NumCPU())
-	
+
 	// CPU usage approximation (goroutines per CPU as utilization indicator)
 	estimatedCPUUsage := (activeGoroutines / numCPU) * 10 // Scale factor for visibility
 	if estimatedCPUUsage > 100 {
 		estimatedCPUUsage = 100 // Cap at 100%
 	}
-	
+
 	CPUMetrics.WithLabelValues("usage_percent").Set(estimatedCPUUsage)
 	CPUMetrics.WithLabelValues("goroutines_per_cpu").Set(activeGoroutines / numCPU)
-	
+
 	// GC CPU usage as percentage
 	gcCPUFraction := stats.GCCPUFraction * 100
 	CPUMetrics.WithLabelValues("gc_cpu_percent").Set(gcCPUFraction)
@@ -254,7 +254,7 @@ func updateCPUMetrics() {
 		ThrottlingMetrics.WithLabelValues("potential_throttling").Set(0)
 		ThrottlingMetrics.WithLabelValues("goroutine_pressure").Set(activeGoroutines / numCPU)
 	}
-	
+
 	// Scheduler pressure indicator
 	if stats.NumGC > 0 && gcCPUFraction > 5 { // High GC CPU usage
 		ThrottlingMetrics.WithLabelValues("gc_pressure").Set(gcCPUFraction)
@@ -269,28 +269,28 @@ func updateCPUMetrics() {
 func updateCPUCoreMetrics(numCPU, maxProcs, goroutines float64) {
 	// Available cores
 	CPUCoreMetrics.WithLabelValues("available_cores").Set(numCPU)
-	
+
 	// Max processes (GOMAXPROCS)
 	CPUCoreMetrics.WithLabelValues("max_procs").Set(maxProcs)
-	
+
 	// Core utilization ratio (how many cores we can actually use vs available)
 	coreUtilization := (maxProcs / numCPU) * 100
 	CPUCoreMetrics.WithLabelValues("core_utilization_percent").Set(coreUtilization)
-	
+
 	// Parallel efficiency (ideal: goroutines distributed across cores)
 	// Values close to maxProcs indicate good parallel utilization
 	parallelEfficiency := goroutines / maxProcs
 	CPUCoreMetrics.WithLabelValues("parallel_efficiency").Set(parallelEfficiency)
-	
+
 	// CPU pressure indicator (high values suggest core contention)
 	if goroutines > maxProcs*5 {
 		CPUCoreMetrics.WithLabelValues("core_pressure").Set(1) // High pressure
 	} else if goroutines > maxProcs*2 {
-		CPUCoreMetrics.WithLabelValues("core_pressure").Set(0.5) // Medium pressure  
+		CPUCoreMetrics.WithLabelValues("core_pressure").Set(0.5) // Medium pressure
 	} else {
 		CPUCoreMetrics.WithLabelValues("core_pressure").Set(0) // Low pressure
 	}
-	
+
 	// Load balance score (how evenly work might be distributed)
 	// Lower values = better load distribution
 	loadImbalance := goroutines / maxProcs
@@ -301,7 +301,7 @@ func updateCPUCoreMetrics(numCPU, maxProcs, goroutines float64) {
 	} else {
 		CPUCoreMetrics.WithLabelValues("load_balance_score").Set(100) // Good balance
 	}
-	
+
 	// Theoretical max parallel tasks (approximation)
 	CPUCoreMetrics.WithLabelValues("max_parallel_capacity").Set(maxProcs * 1000) // Rough estimate
 }

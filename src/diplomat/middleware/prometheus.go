@@ -23,7 +23,7 @@ func PrometheusMiddleware() gin.HandlerFunc {
 
 		// Calculate duration
 		duration := time.Since(start)
-		
+
 		// Get labels
 		method := c.Request.Method
 		endpoint := c.FullPath()

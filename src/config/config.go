@@ -8,10 +8,10 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
+	Server    ServerConfig
 	RateLimit RateLimitConfig
-	CORS     CORSConfig
-	Logging  LoggingConfig
+	CORS      CORSConfig
+	Logging   LoggingConfig
 }
 
 type ServerConfig struct {
@@ -21,13 +21,13 @@ type ServerConfig struct {
 
 type RateLimitConfig struct {
 	RequestsPerMinute int
-	Window           time.Duration
+	Window            time.Duration
 }
 
 type CORSConfig struct {
-	AllowedOrigins []string
-	AllowedMethods []string
-	AllowedHeaders []string
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
 	AllowCredentials bool
 }
 
@@ -44,7 +44,7 @@ func Load() *Config {
 		},
 		RateLimit: RateLimitConfig{
 			RequestsPerMinute: getEnvAsInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
-			Window:           time.Minute,
+			Window:            time.Minute,
 		},
 		CORS: CORSConfig{
 			AllowedOrigins:   getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),

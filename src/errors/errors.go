@@ -17,14 +17,14 @@ func (e APIError) Error() string {
 
 // Common error codes
 const (
-	ErrCodeValidation       = "VALIDATION_ERROR"
-	ErrCodeNotFound        = "NOT_FOUND"
-	ErrCodeInternalServer  = "INTERNAL_SERVER_ERROR"
-	ErrCodeRateLimit       = "RATE_LIMIT_EXCEEDED"
+	ErrCodeValidation        = "VALIDATION_ERROR"
+	ErrCodeNotFound          = "NOT_FOUND"
+	ErrCodeInternalServer    = "INTERNAL_SERVER_ERROR"
+	ErrCodeRateLimit         = "RATE_LIMIT_EXCEEDED"
 	ErrCodeInsufficientFunds = "INSUFFICIENT_FUNDS"
-	ErrCodeInvalidAmount   = "INVALID_AMOUNT"
-	ErrCodeAccountNotFound = "ACCOUNT_NOT_FOUND"
-	ErrCodeSelfTransfer    = "SELF_TRANSFER_NOT_ALLOWED"
+	ErrCodeInvalidAmount     = "INVALID_AMOUNT"
+	ErrCodeAccountNotFound   = "ACCOUNT_NOT_FOUND"
+	ErrCodeSelfTransfer      = "SELF_TRANSFER_NOT_ALLOWED"
 )
 
 // Error constructors

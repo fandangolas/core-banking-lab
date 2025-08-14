@@ -66,7 +66,7 @@ func AssertHasError(t *testing.T, result map[string]interface{}) {
 	if message, ok := result["message"]; ok {
 		assert.NotEmpty(t, message, "Expected error message to be present")
 	} else if errorMsg, ok := result["error"]; ok {
-		assert.NotEmpty(t, errorMsg, "Expected error message to be present") 
+		assert.NotEmpty(t, errorMsg, "Expected error message to be present")
 	} else {
 		t.Error("No error message found in response")
 	}
