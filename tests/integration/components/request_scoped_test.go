@@ -1,7 +1,6 @@
 package components
 
 import (
-	"bank-api/src/context"
 	"bank-api/src/diplomat/middleware"
 	"encoding/json"
 	"net/http"
@@ -19,11 +18,11 @@ func TestRequestContextUniqueness(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	var capturedContexts []*context.RequestContext
+	var capturedContexts []*middleware.RequestContext
 	var capturedRequestIDs []string
 
 	// Test handler that captures request contexts
-	router.Use(middleware.RequestContext())
+	router.Use(middleware.RequestContextMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists, "Request context should exist")
@@ -75,7 +74,7 @@ func TestRequestContextSharedSingletons(t *testing.T) {
 	var capturedDatabases []interface{}
 	var capturedBrokers []interface{}
 
-	router.Use(middleware.RequestContext())
+	router.Use(middleware.RequestContextMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists)
@@ -119,7 +118,7 @@ func TestRequestContextLoggerWithRequestID(t *testing.T) {
 	var loggedRequestID string
 	var loggedUserIP string
 
-	router.Use(middleware.RequestContext())
+	router.Use(middleware.RequestContextMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists)
@@ -154,7 +153,7 @@ func TestRequestContextDuration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	router.Use(middleware.RequestContext())
+	router.Use(middleware.RequestContextMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists)
@@ -190,7 +189,7 @@ func TestRequestContextValueStorage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	router.Use(middleware.RequestContext())
+	router.Use(middleware.RequestContextMiddleware())
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists)

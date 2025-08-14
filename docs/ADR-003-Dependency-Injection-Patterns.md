@@ -50,9 +50,8 @@ reqCtx.WithValue("user_id", "123")    // Request storage
 ```
 src/
 ├── components/     # Application container and singletons
-├── context/        # Request-scoped components  
 └── diplomat/
-    └── middleware/ # Request context injection
+    └── middleware/ # Request context types and injection
 ```
 
 ## Testing

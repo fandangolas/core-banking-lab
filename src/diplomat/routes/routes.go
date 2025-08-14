@@ -8,7 +8,7 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine) {
-	router.Use(middleware.RequestContext())      // Add request-scoped context (first!)
+	router.Use(middleware.RequestContextMiddleware()) // Add request-scoped context (first!)
 	router.Use(middleware.Metrics())
 	router.Use(middleware.PrometheusMiddleware()) // Add Prometheus metrics collection
 

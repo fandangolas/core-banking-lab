@@ -1,4 +1,4 @@
-package context
+package middleware
 
 import (
 	"bank-api/src/diplomat/database"

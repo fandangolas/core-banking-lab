@@ -1,18 +1,16 @@
 package middleware
 
 import (
-	"bank-api/src/context"
-
 	"github.com/gin-gonic/gin"
 )
 
 const RequestContextKey = "request_context"
 
-// RequestContext middleware creates a new request-scoped context for each request
-func RequestContext() gin.HandlerFunc {
+// RequestContextMiddleware creates a new request-scoped context for each request
+func RequestContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Create request-scoped context
-		reqCtx := context.NewRequestContext(c)
+		reqCtx := NewRequestContext(c)
 		
 		// Store in gin context for handlers to access
 		c.Set(RequestContextKey, reqCtx)
@@ -34,12 +32,12 @@ func RequestContext() gin.HandlerFunc {
 
 // GetRequestContext retrieves the request context from gin context
 // This helper makes it easy for handlers to access request-scoped services
-func GetRequestContext(c *gin.Context) (*context.RequestContext, bool) {
+func GetRequestContext(c *gin.Context) (*RequestContext, bool) {
 	reqCtx, exists := c.Get(RequestContextKey)
 	if !exists {
 		return nil, false
 	}
 	
-	requestContext, ok := reqCtx.(*context.RequestContext)
+	requestContext, ok := reqCtx.(*RequestContext)
 	return requestContext, ok
 }
