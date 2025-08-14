@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: banking-dashboard
-  namespace: banking
+  namespace: core-banking
   labels:
     app: banking-dashboard
     component: frontend
@@ -53,7 +53,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: banking-dashboard-service
-  namespace: banking
+  namespace: core-banking
   labels:
     app: banking-dashboard
 spec:
