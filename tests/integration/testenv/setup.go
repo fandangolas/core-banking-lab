@@ -5,17 +5,25 @@ import (
 	"bank-api/src/diplomat/database"
 	"bank-api/src/diplomat/middleware"
 	"bank-api/src/diplomat/routes"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	setupOnce sync.Once
+)
+
 // SetupTestRouter creates a new router for testing with all routes and middleware
 func SetupTestRouter() *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	router := gin.Default()
+	// Ensure database is initialized only once across all tests
+	setupOnce.Do(func() {
+		gin.SetMode(gin.TestMode)
+		database.Init()
+	})
 	
-	// Initialize database if not already done
-	database.Init()
+	// Create a new router for each test
+	router := gin.Default()
 	
 	// Create minimal config for CORS
 	cfg := &config.Config{
