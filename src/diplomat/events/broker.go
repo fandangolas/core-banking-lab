@@ -1,6 +1,9 @@
 package events
 
-import "bank-api/src/models"
+import (
+	"bank-api/src/models"
+	"sync"
+)
 
 // Broker manages client subscriptions and broadcasts transaction events.
 type Broker struct {
@@ -10,10 +13,23 @@ type Broker struct {
 	events        chan models.TransactionEvent
 }
 
-// BrokerInstance is the global event broker.
-var BrokerInstance = NewBroker()
+var (
+	// BrokerInstance is the global event broker (singleton).
+	BrokerInstance *Broker
+	brokerOnce     sync.Once
+)
+
+// GetBroker returns the singleton event broker instance.
+// Uses sync.Once to ensure it's only initialized once.
+func GetBroker() *Broker {
+	brokerOnce.Do(func() {
+		BrokerInstance = NewBroker()
+	})
+	return BrokerInstance
+}
 
 // NewBroker creates and starts a new Broker.
+// This is public for testing purposes but production code should use GetBroker().
 func NewBroker() *Broker {
 	b := &Broker{
 		clients:       make(map[chan models.TransactionEvent]bool),

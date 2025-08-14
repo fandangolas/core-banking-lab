@@ -23,7 +23,7 @@ func CORS(cfg *config.Config) gin.HandlerFunc {
 				break
 			}
 		}
-
+		
 		if !allowed && len(cfg.CORS.AllowOrigins) > 0 {
 			// If origin not allowed, set to first allowed origin (fallback)
 			c.Writer.Header().Set("Access-Control-Allow-Origin", cfg.CORS.AllowOrigins[0])
@@ -38,7 +38,7 @@ func CORS(cfg *config.Config) gin.HandlerFunc {
 			strings.Join(cfg.CORS.AllowHeaders, ", "),
 		)
 		c.Writer.Header().Set(
-			"Access-Control-Allow-Methods",
+			"Access-Control-Allow-Methods", 
 			strings.Join(cfg.CORS.AllowMethods, ", "),
 		)
 

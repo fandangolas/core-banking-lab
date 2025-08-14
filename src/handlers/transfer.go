@@ -123,7 +123,7 @@ func Transfer(c *gin.Context) {
 	metrics.RecordAccountBalance(float64(from.Balance))
 	metrics.RecordAccountBalance(float64(to.Balance))
 
-	events.BrokerInstance.Publish(models.TransactionEvent{
+	events.GetBroker().Publish(models.TransactionEvent{
 		Type:        "transfer",
 		FromID:      from.Id,
 		ToID:        to.Id,

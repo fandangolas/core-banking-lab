@@ -50,7 +50,7 @@ func Deposit(c *gin.Context) {
 	metrics.RecordBankingOperation("deposit", "success")
 	metrics.RecordAccountBalance(float64(balance))
 
-	events.BrokerInstance.Publish(models.TransactionEvent{
+	events.GetBroker().Publish(models.TransactionEvent{
 		Type:      "deposit",
 		AccountID: account.Id,
 		Amount:    req.Amount,

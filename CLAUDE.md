@@ -30,18 +30,22 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 - **`src/domain/`**: Core business logic with thread-safe account operations
 - **`src/models/`**: Data structures (Account, Event models)
 - **`src/handlers/`**: HTTP request handlers using Gin framework
+- **`src/config/`**: Configuration management with environment variable support
 - **`src/diplomat/`**: External adapters and infrastructure
   - `database/`: Repository interface with in-memory implementation
-  - `middleware/`: HTTP middleware (CORS, metrics)
+  - `middleware/`: HTTP middleware (CORS, Prometheus metrics)
   - `routes/`: Route registration and configuration
   - `events/`: Event broker for real-time updates
-- **`src/metrics/`**: Application metrics collection
+- **`src/metrics/`**: Application metrics collection with Prometheus integration
 
 ### Key Design Patterns
 - **Ordered locking** in transfers to prevent deadlocks (by account ID)
 - **Mutex-protected account operations** for concurrency safety
 - **Repository pattern** with interface for future PostgreSQL migration
 - **Event-driven updates** for real-time dashboard synchronization
+- **Singleton pattern** with `sync.Once` for test environment setup
+- **Dependency injection** with global repository instance for clean architecture
+- **Configuration-based middleware** supporting multiple environments
 
 ## Testing Strategy
 
@@ -68,7 +72,7 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 - `POST /accounts/:id/deposit` - Deposit to account
 - `POST /accounts/:id/withdraw` - Withdraw from account
 - `POST /accounts/transfer` - Transfer between accounts
-- `GET /metrics` - Application metrics
+- `GET /metrics` - Prometheus metrics endpoint
 - `GET /events` - Real-time event stream
 
 ## Important Implementation Details
@@ -85,8 +89,40 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 
 ### Real-time Features
 - Event broker publishes transaction events for dashboard updates
-- Metrics middleware tracks endpoint usage
+- Prometheus metrics middleware tracks HTTP requests, duration, and in-flight requests
 - Dashboard polls for real-time balance and transaction updates
+- CORS middleware with configurable origins and headers
+
+## Configuration
+
+The application uses environment-based configuration via the `src/config` package:
+
+### Environment Variables
+- **SERVER_PORT**: API server port (default: "8080")
+- **SERVER_HOST**: API server host (default: "localhost")
+- **RATE_LIMIT_REQUESTS_PER_MINUTE**: Rate limiting (default: 100)
+- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins (default: "http://localhost:5173")
+- **CORS_ALLOWED_METHODS**: Comma-separated HTTP methods (default: "GET,POST,PUT,DELETE,OPTIONS")
+- **CORS_ALLOWED_HEADERS**: Comma-separated allowed headers
+- **CORS_ALLOW_CREDENTIALS**: Enable credentials (default: false)
+- **LOG_LEVEL**: Logging level (default: "info")
+- **LOG_FORMAT**: Log format (default: "json")
+
+### Metrics Configuration
+- Prometheus metrics available at `/metrics` endpoint
+- Tracks HTTP request duration, total requests, and in-flight requests
+- Labels include method, endpoint, and status code
+
+## CI/CD Pipeline
+
+Enhanced GitHub Actions workflow with comprehensive quality checks:
+
+- **Dependency verification**: `go mod verify` and `go mod tidy`
+- **Static analysis**: `go vet` for code issues
+- **Code formatting**: `go fmt` validation
+- **Build verification**: Multi-package compilation check
+- **Race condition detection**: `go test -race` for concurrent safety
+- **Test execution**: Full test suite with verbose output
 
 ## Future Migration Notes
 - Database: Currently in-memory, planned PostgreSQL migration via `database/postgres.go`
@@ -98,3 +134,6 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 - Use consistent account ID ordering in concurrent operations to avoid deadlocks
 - Test concurrent scenarios extensively when modifying domain logic
 - Event publishing happens asynchronously - consider timing in tests
+- Configuration is loaded once at startup - restart service after environment changes
+- Prometheus metrics are automatically collected for all HTTP endpoints
+- Use the test environment singleton pattern for consistent test setup

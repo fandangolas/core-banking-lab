@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	Server    ServerConfig
-	RateLimit RateLimitConfig
-	CORS      CORSConfig
-	Logging   LoggingConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	RateLimit   RateLimitConfig
+	CORS        CORSConfig
+	Logging     LoggingConfig
+	Environment string
 }
 
 type ServerConfig struct {
@@ -31,6 +33,11 @@ type CORSConfig struct {
 	AllowCredentials bool
 }
 
+type DatabaseConfig struct {
+	Type string
+	DSN  string
+}
+
 type LoggingConfig struct {
 	Level  string
 	Format string
@@ -41,6 +48,10 @@ func Load() *Config {
 		Server: ServerConfig{
 			Port: getEnv("SERVER_PORT", "8080"),
 			Host: getEnv("SERVER_HOST", "localhost"),
+		},
+		Database: DatabaseConfig{
+			Type: getEnv("DATABASE_TYPE", "inmemory"),
+			DSN:  getEnv("DATABASE_DSN", ""),
 		},
 		RateLimit: RateLimitConfig{
 			RequestsPerMinute: getEnvAsInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
@@ -56,6 +67,7 @@ func Load() *Config {
 			Level:  getEnv("LOG_LEVEL", "info"),
 			Format: getEnv("LOG_FORMAT", "json"),
 		},
+		Environment: getEnv("ENVIRONMENT", "development"),
 	}
 }
 
