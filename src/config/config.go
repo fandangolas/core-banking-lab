@@ -25,9 +25,9 @@ type RateLimitConfig struct {
 }
 
 type CORSConfig struct {
-	AllowedOrigins   []string
-	AllowedMethods   []string
-	AllowedHeaders   []string
+	AllowOrigins     []string
+	AllowMethods     []string
+	AllowHeaders     []string
 	AllowCredentials bool
 }
 
@@ -47,9 +47,9 @@ func Load() *Config {
 			Window:            time.Minute,
 		},
 		CORS: CORSConfig{
-			AllowedOrigins:   getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
-			AllowedMethods:   getEnvAsSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-			AllowedHeaders:   getEnvAsSlice("CORS_ALLOWED_HEADERS", []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"}),
+			AllowOrigins:     getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
+			AllowMethods:     getEnvAsSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+			AllowHeaders:     getEnvAsSlice("CORS_ALLOWED_HEADERS", []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"}),
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", false),
 		},
 		Logging: LoggingConfig{
