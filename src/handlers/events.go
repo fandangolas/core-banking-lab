@@ -8,8 +8,9 @@ import (
 )
 
 func Events(c *gin.Context) {
-	ch := events.BrokerInstance.Subscribe()
-	defer events.BrokerInstance.Unsubscribe(ch)
+	broker := events.GetBroker()
+	ch := broker.Subscribe()
+	defer broker.Unsubscribe(ch)
 
 	c.Stream(func(w io.Writer) bool {
 		if evt, ok := <-ch; ok {

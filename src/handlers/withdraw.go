@@ -51,7 +51,7 @@ func Withdraw(c *gin.Context) {
 	metrics.RecordBankingOperation("withdraw", "success")
 	metrics.RecordAccountBalance(float64(balance))
 
-	events.BrokerInstance.Publish(models.TransactionEvent{
+	events.GetBroker().Publish(models.TransactionEvent{
 		Type:      "withdraw",
 		AccountID: account.Id,
 		Amount:    req.Amount,

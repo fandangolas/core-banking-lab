@@ -1,6 +1,9 @@
 package database
 
-import "bank-api/src/models"
+import (
+	"bank-api/src/models"
+	"sync"
+)
 
 // Repository defines the required methods for persisting accounts.
 type Repository interface {
@@ -10,9 +13,15 @@ type Repository interface {
 	Reset()
 }
 
-var Repo Repository
+var (
+	Repo     Repository
+	initOnce sync.Once
+)
 
 // Init initializes the repository with an in-memory implementation.
+// Uses sync.Once to ensure it's only initialized once (singleton pattern).
 func Init() {
-	Repo = NewInMemory()
+	initOnce.Do(func() {
+		Repo = NewInMemory()
+	})
 }
