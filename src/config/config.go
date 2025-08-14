@@ -23,7 +23,7 @@ type ServerConfig struct {
 
 type RateLimitConfig struct {
 	RequestsPerMinute int
-	Window           time.Duration
+	Window            time.Duration
 }
 
 type CORSConfig struct {
@@ -55,7 +55,7 @@ func Load() *Config {
 		},
 		RateLimit: RateLimitConfig{
 			RequestsPerMinute: getEnvAsInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
-			Window:           time.Minute,
+			Window:            time.Minute,
 		},
 		CORS: CORSConfig{
 			AllowOrigins:     getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),

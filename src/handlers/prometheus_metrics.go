@@ -14,7 +14,7 @@ var startTime = time.Now()
 func PrometheusMetrics(c *gin.Context) {
 	// Update system metrics before serving
 	updateSystemMetricsForPrometheus()
-	
+
 	// Serve Prometheus metrics
 	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
 }
@@ -23,7 +23,7 @@ func PrometheusMetrics(c *gin.Context) {
 func updateSystemMetricsForPrometheus() {
 	// Update system metrics
 	metrics.UpdateSystemMetrics()
-	
+
 	// Update uptime
 	uptime := time.Since(startTime)
 	metrics.UptimeGauge.Set(uptime.Seconds())

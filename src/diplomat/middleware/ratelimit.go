@@ -24,12 +24,12 @@ func RateLimit(cfg *config.Config) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
-		
+
 		limiter.mutex.Lock()
 		defer limiter.mutex.Unlock()
 
 		now := time.Now()
-		
+
 		// Clean old requests outside the window
 		if requests, exists := limiter.requests[clientIP]; exists {
 			var validRequests []time.Time
@@ -44,7 +44,7 @@ func RateLimit(cfg *config.Config) gin.HandlerFunc {
 		// Check if limit exceeded
 		if len(limiter.requests[clientIP]) >= limiter.limit {
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "Rate limit exceeded. Try again later.",
+				"error":       "Rate limit exceeded. Try again later.",
 				"retry_after": int(limiter.window.Seconds()),
 			})
 			c.Abort()
@@ -53,7 +53,7 @@ func RateLimit(cfg *config.Config) gin.HandlerFunc {
 
 		// Add current request
 		limiter.requests[clientIP] = append(limiter.requests[clientIP], now)
-		
+
 		c.Next()
 	}
 }

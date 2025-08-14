@@ -79,11 +79,11 @@ func TestConcurrentSingletonAccess(t *testing.T) {
 	firstContainer := containerInstances[0]
 
 	for i := 1; i < numGoroutines; i++ {
-		assert.Same(t, firstDB, dbInstances[i], 
+		assert.Same(t, firstDB, dbInstances[i],
 			"Database instance %d should be same as first", i)
-		assert.Same(t, firstBroker, brokerInstances[i], 
+		assert.Same(t, firstBroker, brokerInstances[i],
 			"Broker instance %d should be same as first", i)
-		assert.Same(t, firstContainer, containerInstances[i], 
+		assert.Same(t, firstContainer, containerInstances[i],
 			"Container instance %d should be same as first", i)
 	}
 }
@@ -100,8 +100,8 @@ func TestSingletonInitializationOrder(t *testing.T) {
 	assert.NotNil(t, container.Config, "Config should be initialized")
 
 	// Verify they match the global singletons
-	assert.Same(t, database.Repo, container.Database, 
+	assert.Same(t, database.Repo, container.Database,
 		"Container database should match global singleton")
-	assert.Same(t, events.GetBroker(), container.EventBroker, 
+	assert.Same(t, events.GetBroker(), container.EventBroker,
 		"Container event broker should match global singleton")
 }

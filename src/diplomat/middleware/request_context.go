@@ -11,20 +11,20 @@ func RequestContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Create request-scoped context
 		reqCtx := NewRequestContext(c)
-		
+
 		// Store in gin context for handlers to access
 		c.Set(RequestContextKey, reqCtx)
-		
+
 		// Log request start
 		reqCtx.Logger.Info("Request started", map[string]interface{}{
 			"method":     c.Request.Method,
 			"path":       c.Request.URL.Path,
 			"user_agent": reqCtx.UserAgent,
 		})
-		
+
 		// Process request
 		c.Next()
-		
+
 		// Log request completion and cleanup
 		reqCtx.Finish()
 	}
@@ -37,7 +37,7 @@ func GetRequestContext(c *gin.Context) (*RequestContext, bool) {
 	if !exists {
 		return nil, false
 	}
-	
+
 	requestContext, ok := reqCtx.(*RequestContext)
 	return requestContext, ok
 }

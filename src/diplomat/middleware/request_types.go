@@ -15,14 +15,14 @@ import (
 // This is created fresh for each HTTP request
 type RequestContext struct {
 	// Request metadata
-	RequestID   string
-	UserIP      string
-	UserAgent   string
-	StartTime   time.Time
-	GinContext  *gin.Context
-	Context     context.Context
-	cancelFunc  context.CancelFunc // Store cancel function for cleanup
-	
+	RequestID  string
+	UserIP     string
+	UserAgent  string
+	StartTime  time.Time
+	GinContext *gin.Context
+	Context    context.Context
+	cancelFunc context.CancelFunc // Store cancel function for cleanup
+
 	// Request-scoped services (these reference the singletons)
 	Database    database.Repository
 	EventBroker *events.Broker
@@ -39,19 +39,19 @@ type RequestLogger struct {
 // This should be called at the beginning of each HTTP handler
 func NewRequestContext(ginCtx *gin.Context) *RequestContext {
 	requestID := uuid.New().String()
-	
+
 	// Create request context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	
+
 	return &RequestContext{
-		RequestID:   requestID,
-		UserIP:      ginCtx.ClientIP(),
-		UserAgent:   ginCtx.GetHeader("User-Agent"),
-		StartTime:   time.Now(),
-		GinContext:  ginCtx,
-		Context:     ctx,
-		cancelFunc:  cancel,
-		
+		RequestID:  requestID,
+		UserIP:     ginCtx.ClientIP(),
+		UserAgent:  ginCtx.GetHeader("User-Agent"),
+		StartTime:  time.Now(),
+		GinContext: ginCtx,
+		Context:    ctx,
+		cancelFunc: cancel,
+
 		// Reference the singleton services
 		Database:    database.Repo,
 		EventBroker: events.GetBroker(),
@@ -69,7 +69,7 @@ func (rl RequestLogger) Info(message string, fields map[string]interface{}) {
 	}
 	fields["request_id"] = rl.requestID
 	fields["user_ip"] = rl.userIP
-	
+
 	logging.Info(message, fields)
 }
 
@@ -80,7 +80,7 @@ func (rl RequestLogger) Warn(message string, fields map[string]interface{}) {
 	}
 	fields["request_id"] = rl.requestID
 	fields["user_ip"] = rl.userIP
-	
+
 	logging.Warn(message, fields)
 }
 
@@ -91,7 +91,7 @@ func (rl RequestLogger) Error(message string, err error, fields map[string]inter
 	}
 	fields["request_id"] = rl.requestID
 	fields["user_ip"] = rl.userIP
-	
+
 	logging.Error(message, err, fields)
 }
 
@@ -105,7 +105,7 @@ func (rc *RequestContext) WithValue(key, value interface{}) {
 	rc.Context = context.WithValue(rc.Context, key, value)
 }
 
-// Value retrieves a value from the request context  
+// Value retrieves a value from the request context
 func (rc *RequestContext) Value(key interface{}) interface{} {
 	return rc.Context.Value(key)
 }
@@ -119,7 +119,7 @@ func (rc *RequestContext) Finish() {
 		"path":        rc.GinContext.Request.URL.Path,
 		"status":      rc.GinContext.Writer.Status(),
 	})
-	
+
 	// Cancel the context to free resources
 	if rc.cancelFunc != nil {
 		rc.cancelFunc()

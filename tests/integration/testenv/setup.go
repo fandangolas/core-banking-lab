@@ -21,10 +21,10 @@ func SetupTestRouter() *gin.Engine {
 		gin.SetMode(gin.TestMode)
 		database.Init()
 	})
-	
+
 	// Create a new router for each test
 	router := gin.Default()
-	
+
 	// Create minimal config for CORS
 	cfg := &config.Config{
 		CORS: config.CORSConfig{
@@ -33,13 +33,13 @@ func SetupTestRouter() *gin.Engine {
 			AllowHeaders: []string{"*"},
 		},
 	}
-	
+
 	// Apply middleware
 	router.Use(middleware.CORS(cfg))
-	
+
 	// Register routes
 	routes.RegisterRoutes(router)
-	
+
 	return router
 }
 

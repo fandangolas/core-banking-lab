@@ -20,7 +20,7 @@ func Transfer(c *gin.Context) {
 		ToID   int `json:"to"`
 		Amount int `json:"amount"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apiErr := errors.NewValidationError("Invalid request format")
 		logging.Warn("Invalid JSON in transfer request", map[string]interface{}{

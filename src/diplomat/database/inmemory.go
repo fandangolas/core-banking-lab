@@ -44,7 +44,7 @@ func (db *InMemory) GetAccount(id int) (*models.Account, bool) {
 }
 
 func (db *InMemory) UpdateAccount(acc *models.Account) {
-	// Note: This method is actually not needed since we work with 
+	// Note: This method is actually not needed since we work with
 	// pointers to the accounts directly. The mutex locks in domain
 	// layer already protect concurrent access to account fields.
 	// This is kept for interface compliance but doesn't need to do anything
