@@ -97,7 +97,7 @@
           kind: Secret
           metadata:
             name: ghcr-secret
-            namespace: banking
+            namespace: core-banking
           type: kubernetes.io/dockerconfigjson
           data:
             .dockerconfigjson: "{{ ('{ \"auths\": { \"ghcr.io\": { \"auth\": \"' + (github_actor + ':' + github_token) | b64encode + '\" } } }') | b64encode }}"
@@ -154,7 +154,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Service
-        namespace: banking
+        namespace: core-banking
         kubeconfig: /home/ubuntu/.kube/config
       register: services
       become_user: ubuntu
