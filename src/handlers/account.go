@@ -17,7 +17,7 @@ func CreateAccount(ctx *gin.Context) {
 	var req struct {
 		Owner string `json:"owner"`
 	}
-	
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		apiErr := errors.NewValidationError("Invalid request format")
 		logging.Warn("Invalid JSON in create account request", map[string]interface{}{
@@ -40,17 +40,17 @@ func CreateAccount(ctx *gin.Context) {
 	}
 
 	id := database.Repo.CreateAccount(req.Owner)
-	
+
 	// Record metrics
 	metrics.RecordAccountCreation()
 	metrics.UpdateActiveAccounts(float64(database.Repo.(*database.InMemory).GetAccountCount()))
-	
+
 	logging.Info("Account created successfully", map[string]interface{}{
 		"account_id": id,
 		"owner":      req.Owner,
 		"ip":         ctx.ClientIP(),
 	})
-	
+
 	ctx.JSON(http.StatusCreated, gin.H{"id": id, "owner": req.Owner})
 }
 
@@ -86,16 +86,16 @@ func GetBalance(c *gin.Context) {
 	}
 
 	balance := domain.GetBalance(account)
-	
+
 	// Record balance for distribution metrics
 	metrics.RecordAccountBalance(float64(balance))
-	
+
 	logging.Debug("Balance retrieved", map[string]interface{}{
 		"account_id": id,
 		"balance":    balance,
 		"ip":         c.ClientIP(),
 	})
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":      account.Id,
 		"owner":   account.Owner,

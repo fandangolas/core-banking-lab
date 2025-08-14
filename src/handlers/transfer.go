@@ -20,7 +20,7 @@ func Transfer(c *gin.Context) {
 		ToID   int `json:"to"`
 		Amount int `json:"amount"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apiErr := errors.NewValidationError("Invalid request format")
 		logging.Warn("Invalid JSON in transfer request", map[string]interface{}{
@@ -123,7 +123,7 @@ func Transfer(c *gin.Context) {
 	metrics.RecordAccountBalance(float64(from.Balance))
 	metrics.RecordAccountBalance(float64(to.Balance))
 
-	events.BrokerInstance.Publish(models.TransactionEvent{
+	events.GetBroker().Publish(models.TransactionEvent{
 		Type:        "transfer",
 		FromID:      from.Id,
 		ToID:        to.Id,

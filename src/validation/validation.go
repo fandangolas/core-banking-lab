@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	MinAmount     = 1
-	MaxAmount     = 1000000  // R$ 10,000.00 (in centavos)
-	MaxOwnerLen   = 100
-	MinOwnerLen   = 2
+	MinAmount   = 1
+	MaxAmount   = 1000000 // R$ 10,000.00 (in centavos)
+	MaxOwnerLen = 100
+	MinOwnerLen = 2
 )
 
 func ValidateAmount(amount int) error {
@@ -25,22 +25,22 @@ func ValidateAmount(amount int) error {
 
 func ValidateOwnerName(owner string) error {
 	owner = strings.TrimSpace(owner)
-	
+
 	if len(owner) < MinOwnerLen {
 		return errors.New("owner name must be at least 2 characters")
 	}
-	
+
 	if len(owner) > MaxOwnerLen {
 		return errors.New("owner name cannot exceed 100 characters")
 	}
-	
+
 	// Check if name contains only letters, numbers, spaces, and common punctuation
 	for _, r := range owner {
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsSpace(r) && r != '.' && r != '-' && r != '\'' && r != '_' {
 			return errors.New("owner name contains invalid characters")
 		}
 	}
-	
+
 	return nil
 }
 

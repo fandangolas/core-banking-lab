@@ -2,39 +2,26 @@ package main
 
 // Core Banking API with comprehensive monitoring stack
 import (
-	"bank-api/src/config"
-	"bank-api/src/diplomat/database"
-	"bank-api/src/diplomat/middleware"
-	"bank-api/src/diplomat/routes"
+	"bank-api/src/components"
 	"bank-api/src/logging"
-
-	"github.com/gin-gonic/gin"
+	"log"
 )
 
 func main() {
-	// Load configuration
-	cfg := config.Load()
+	// Initialize all application components
+	container, err := components.New()
+	if err != nil {
+		log.Fatalf("Failed to initialize application: %v", err)
+	}
 
-	// Initialize logging
-	logging.Init(cfg)
-	logging.Info("Starting bank-api server", map[string]interface{}{
-		"port": cfg.Server.Port,
-		"host": cfg.Server.Host,
+	logging.Info("Bank API initialized successfully", map[string]interface{}{
+		"version":     "1.0.0",
+		"environment": container.GetConfig().Environment,
+		"port":        container.GetConfig().Server.Port,
 	})
 
-	// Initialize database
-	database.Init()
-
-	// Setup router with middleware - testing kubernetes metrics into grafana, again
-	router := gin.Default()
-	router.Use(middleware.CORS(cfg))
-	//router.Use(middleware.RateLimit(cfg))
-
-	// Register routes
-	routes.RegisterRoutes(router)
-
-	// Start server
-	addr := ":" + cfg.Server.Port
-	logging.Info("Server listening", map[string]interface{}{"address": addr})
-	router.Run(addr)
+	// Start the server (this will block until shutdown)
+	if err := container.Start(); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }

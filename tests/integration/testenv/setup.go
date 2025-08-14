@@ -1,7 +1,9 @@
 package testenv
 
 import (
+	"bank-api/src/config"
 	"bank-api/src/diplomat/database"
+	"bank-api/src/diplomat/middleware"
 	"bank-api/src/diplomat/routes"
 	"sync"
 
@@ -9,16 +11,39 @@ import (
 )
 
 var (
-	router    *gin.Engine
 	setupOnce sync.Once
 )
 
-func SetupRouter() *gin.Engine {
+// SetupTestRouter creates a new router for testing with all routes and middleware
+func SetupTestRouter() *gin.Engine {
+	// Ensure database is initialized only once across all tests
 	setupOnce.Do(func() {
 		gin.SetMode(gin.TestMode)
-		router = gin.Default()
 		database.Init()
-		routes.RegisterRoutes(router)
 	})
+
+	// Create a new router for each test
+	router := gin.Default()
+
+	// Create minimal config for CORS
+	cfg := &config.Config{
+		CORS: config.CORSConfig{
+			AllowOrigins: []string{"*"},
+			AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowHeaders: []string{"*"},
+		},
+	}
+
+	// Apply middleware
+	router.Use(middleware.CORS(cfg))
+
+	// Register routes
+	routes.RegisterRoutes(router)
+
 	return router
+}
+
+// SetupRouter is maintained for backward compatibility
+func SetupRouter() *gin.Engine {
+	return SetupTestRouter()
 }
