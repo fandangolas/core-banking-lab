@@ -50,9 +50,8 @@ func NewTestContainer() *TestContainer {
 	database.Init()
 	db := database.Repo
 
-	// Initialize event broker
-	eventBroker := events.NewBroker()
-	events.BrokerInstance = eventBroker
+	// Get the singleton event broker
+	eventBroker := events.GetBroker()
 
 	// Create router with middleware and routes
 	router := SetupTestRouter()

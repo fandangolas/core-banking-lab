@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -28,8 +29,29 @@ type Container struct {
 	Server      *http.Server
 }
 
-// New creates and initializes all application components
+var (
+	instance     *Container
+	instanceOnce sync.Once
+	instanceErr  error
+)
+
+// GetInstance returns the singleton container instance.
+// Uses sync.Once to ensure it's only initialized once.
+func GetInstance() (*Container, error) {
+	instanceOnce.Do(func() {
+		instance, instanceErr = newContainer()
+	})
+	return instance, instanceErr
+}
+
+// New creates and initializes all application components.
+// For backward compatibility, this calls GetInstance.
 func New() (*Container, error) {
+	return GetInstance()
+}
+
+// newContainer creates a new container instance (internal use only)
+func newContainer() (*Container, error) {
 	container := &Container{}
 
 	// Initialize configuration
@@ -92,13 +114,8 @@ func (c *Container) initDatabase() error {
 
 // initEventBroker sets up the event broadcasting system
 func (c *Container) initEventBroker() error {
-	// Use the existing global broker instance or create a new one
-	if events.BrokerInstance != nil {
-		c.EventBroker = events.BrokerInstance
-	} else {
-		c.EventBroker = events.NewBroker()
-		events.BrokerInstance = c.EventBroker
-	}
+	// Get the singleton event broker instance
+	c.EventBroker = events.GetBroker()
 	
 	logging.Info("Event broker initialized", nil)
 	return nil
