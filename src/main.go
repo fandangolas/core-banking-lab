@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-	// Initialize all application components
 	container, err := components.New()
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
@@ -19,7 +18,6 @@ func main() {
 		"port":        container.GetConfig().Server.Port,
 	})
 
-	// Start the server (this will block until shutdown)
 	if err := container.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
