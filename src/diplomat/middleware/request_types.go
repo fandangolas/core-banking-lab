@@ -21,6 +21,7 @@ type RequestContext struct {
 	StartTime   time.Time
 	GinContext  *gin.Context
 	Context     context.Context
+	cancelFunc  context.CancelFunc // Store cancel function for cleanup
 	
 	// Request-scoped services (these reference the singletons)
 	Database    database.Repository
@@ -40,7 +41,7 @@ func NewRequestContext(ginCtx *gin.Context) *RequestContext {
 	requestID := uuid.New().String()
 	
 	// Create request context with timeout
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	
 	return &RequestContext{
 		RequestID:   requestID,
@@ -49,6 +50,7 @@ func NewRequestContext(ginCtx *gin.Context) *RequestContext {
 		StartTime:   time.Now(),
 		GinContext:  ginCtx,
 		Context:     ctx,
+		cancelFunc:  cancel,
 		
 		// Reference the singleton services
 		Database:    database.Repo,
@@ -117,4 +119,9 @@ func (rc *RequestContext) Finish() {
 		"path":        rc.GinContext.Request.URL.Path,
 		"status":      rc.GinContext.Writer.Status(),
 	})
+	
+	// Cancel the context to free resources
+	if rc.cancelFunc != nil {
+		rc.cancelFunc()
+	}
 }
