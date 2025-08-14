@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-provisioning
-  namespace: banking
+  namespace: core-banking
 data:
   dashboards.yml: |
     apiVersion: 1
@@ -21,7 +21,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards
-  namespace: banking
+  namespace: core-banking
 data:
   banking-overview.json: |
     {
