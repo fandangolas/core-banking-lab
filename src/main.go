@@ -1,6 +1,5 @@
 package main
 
-// Core Banking API with comprehensive monitoring stack
 import (
 	"bank-api/src/components"
 	"bank-api/src/logging"
