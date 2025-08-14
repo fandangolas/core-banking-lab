@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	RateLimit RateLimitConfig
-	CORS     CORSConfig
-	Logging  LoggingConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	RateLimit   RateLimitConfig
+	CORS        CORSConfig
+	Logging     LoggingConfig
+	Environment string
 }
 
 type ServerConfig struct {
@@ -25,10 +27,15 @@ type RateLimitConfig struct {
 }
 
 type CORSConfig struct {
-	AllowedOrigins []string
-	AllowedMethods []string
-	AllowedHeaders []string
+	AllowOrigins     []string
+	AllowMethods     []string
+	AllowHeaders     []string
 	AllowCredentials bool
+}
+
+type DatabaseConfig struct {
+	Type string
+	DSN  string
 }
 
 type LoggingConfig struct {
@@ -42,20 +49,25 @@ func Load() *Config {
 			Port: getEnv("SERVER_PORT", "8080"),
 			Host: getEnv("SERVER_HOST", "localhost"),
 		},
+		Database: DatabaseConfig{
+			Type: getEnv("DATABASE_TYPE", "inmemory"),
+			DSN:  getEnv("DATABASE_DSN", ""),
+		},
 		RateLimit: RateLimitConfig{
 			RequestsPerMinute: getEnvAsInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
 			Window:           time.Minute,
 		},
 		CORS: CORSConfig{
-			AllowedOrigins:   getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
-			AllowedMethods:   getEnvAsSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-			AllowedHeaders:   getEnvAsSlice("CORS_ALLOWED_HEADERS", []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"}),
+			AllowOrigins:     getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
+			AllowMethods:     getEnvAsSlice("CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+			AllowHeaders:     getEnvAsSlice("CORS_ALLOWED_HEADERS", []string{"Content-Type", "Authorization", "Accept", "X-Requested-With"}),
 			AllowCredentials: getEnvAsBool("CORS_ALLOW_CREDENTIALS", false),
 		},
 		Logging: LoggingConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
 			Format: getEnv("LOG_FORMAT", "json"),
 		},
+		Environment: getEnv("ENVIRONMENT", "development"),
 	}
 }
 

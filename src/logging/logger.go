@@ -130,12 +130,14 @@ func Warn(message string, fields ...map[string]interface{}) {
 	}
 }
 
-func Error(message string, fields ...map[string]interface{}) {
+func Error(message string, err error, fields map[string]interface{}) {
 	if defaultLogger != nil {
-		var f map[string]interface{}
-		if len(fields) > 0 {
-			f = fields[0]
+		if fields == nil {
+			fields = make(map[string]interface{})
 		}
-		defaultLogger.log(ERROR, message, f)
+		if err != nil {
+			fields["error"] = err.Error()
+		}
+		defaultLogger.log(ERROR, message, fields)
 	}
 }
