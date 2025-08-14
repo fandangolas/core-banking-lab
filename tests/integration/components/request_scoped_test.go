@@ -26,7 +26,7 @@ func TestRequestContextUniqueness(t *testing.T) {
 	router.GET("/test", func(c *gin.Context) {
 		reqCtx, exists := middleware.GetRequestContext(c)
 		require.True(t, exists, "Request context should exist")
-		
+
 		// Capture the context for later comparison
 		capturedContexts = append(capturedContexts, reqCtx)
 		capturedRequestIDs = append(capturedRequestIDs, reqCtx.RequestID)
@@ -56,11 +56,11 @@ func TestRequestContextUniqueness(t *testing.T) {
 	for i := 0; i < numRequests; i++ {
 		for j := i + 1; j < numRequests; j++ {
 			// Different context instances
-			assert.NotSame(t, capturedContexts[i], capturedContexts[j], 
+			assert.NotSame(t, capturedContexts[i], capturedContexts[j],
 				"Request contexts %d and %d should be different instances", i, j)
-			
+
 			// Different request IDs
-			assert.NotEqual(t, capturedRequestIDs[i], capturedRequestIDs[j], 
+			assert.NotEqual(t, capturedRequestIDs[i], capturedRequestIDs[j],
 				"Request IDs %d and %d should be different", i, j)
 		}
 	}
@@ -103,9 +103,9 @@ func TestRequestContextSharedSingletons(t *testing.T) {
 	firstBroker := capturedBrokers[0]
 
 	for i := 1; i < numRequests; i++ {
-		assert.Equal(t, firstDatabase, capturedDatabases[i], 
+		assert.Equal(t, firstDatabase, capturedDatabases[i],
 			"Database should be same singleton across requests")
-		assert.Equal(t, firstBroker, capturedBrokers[i], 
+		assert.Equal(t, firstBroker, capturedBrokers[i],
 			"Event broker should be same singleton across requests")
 	}
 }
@@ -162,7 +162,7 @@ func TestRequestContextDuration(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		duration := reqCtx.Duration()
-		assert.True(t, duration >= 10*time.Millisecond, 
+		assert.True(t, duration >= 10*time.Millisecond,
 			"Duration should be at least 10ms, got %v", duration)
 
 		c.JSON(http.StatusOK, gin.H{
