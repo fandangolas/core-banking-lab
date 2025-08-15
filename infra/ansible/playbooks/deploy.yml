@@ -89,6 +89,13 @@
       with_fileglob:
         - "../../../k8s/*.yaml"
 
+    - name: Create namespace first
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ app_dir }}/00-namespace.yaml"
+        kubeconfig: /home/ubuntu/.kube/config
+      become_user: ubuntu
+
     - name: Create image pull secret for GHCR
       kubernetes.core.k8s:
         state: present
