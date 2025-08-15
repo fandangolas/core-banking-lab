@@ -209,7 +209,7 @@ spec:
   resources:
     requests:
       storage: 2Gi
-  storageClassName: gp2
+  # storageClassName: # Use default StorageClass (gp2 on AWS EKS, local-path on K3s, etc.)
 ---
 apiVersion: v1
 kind: ConfigMap
