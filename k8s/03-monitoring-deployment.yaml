@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus
-  namespace: banking
+  namespace: core-banking
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -36,13 +36,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: prometheus
-  namespace: banking
+  namespace: core-banking
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: banking
+  namespace: core-banking
 data:
   prometheus.yml: |
     global:
@@ -133,7 +133,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: banking
+  namespace: core-banking
   labels:
     app: prometheus
     component: monitoring
@@ -185,7 +185,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus-service
-  namespace: banking
+  namespace: core-banking
   labels:
     app: prometheus
 spec:
@@ -202,7 +202,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: grafana-pvc
-  namespace: banking
+  namespace: core-banking
 spec:
   accessModes:
     - ReadWriteOnce
@@ -215,7 +215,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasource
-  namespace: banking
+  namespace: core-banking
 data:
   prometheus.yml: |
     apiVersion: 1
@@ -231,7 +231,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: banking
+  namespace: core-banking
   labels:
     app: grafana
     component: monitoring
@@ -295,7 +295,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana-service
-  namespace: banking
+  namespace: core-banking
   labels:
     app: grafana
 spec:
