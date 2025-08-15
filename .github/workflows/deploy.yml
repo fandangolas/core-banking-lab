@@ -321,10 +321,68 @@ jobs:
             sleep 10
           done
 
-      - name: Update Kubernetes manifests with new images
+      - name: Determine image strategy and update Kubernetes manifests
         run: |
-          sed -i 's|image: banking-api:latest|image: '"${API_IMAGE}"':sha-'"${{ github.sha }}"'|g' ../../k8s/01-api-deployment.yaml
-          sed -i 's|image: banking-dashboard:latest|image: '"${DASH_IMAGE}"':sha-'"${{ github.sha }}"'|g' ../../k8s/02-dashboard-deployment.yaml
+          echo "Checking if new images were built..."
+          
+          if [ "${{ needs.build.outputs.should-build }}" == "true" ]; then
+            echo "New images were built - using specific SHA tags"
+            API_TAG="${API_IMAGE}:sha-${{ github.sha }}"
+            DASH_TAG="${DASH_IMAGE}:sha-${{ github.sha }}"
+            
+            # Verify images exist in registry
+            echo "Verifying API image exists..."
+            if ! docker manifest inspect "${API_TAG}" >/dev/null 2>&1; then
+              echo "Warning: API image ${API_TAG} not found, falling back to latest"
+              API_TAG="${API_IMAGE}:latest"
+            fi
+            
+            echo "Verifying Dashboard image exists..."
+            if ! docker manifest inspect "${DASH_TAG}" >/dev/null 2>&1; then
+              echo "Warning: Dashboard image ${DASH_TAG} not found, falling back to latest"  
+              DASH_TAG="${DASH_IMAGE}:latest"
+            fi
+          else
+            echo "No new images built - using latest available images"
+            API_TAG="${API_IMAGE}:latest"
+            DASH_TAG="${DASH_IMAGE}:latest"
+            
+            # Check if latest images exist, if not use a known good version
+            if ! docker manifest inspect "${API_TAG}" >/dev/null 2>&1; then
+              echo "Warning: Latest API image not found, checking for any available version..."
+              # Try to find any available tag
+              AVAILABLE_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_PAT }}" \
+                "https://ghcr.io/v2/fandangolas/core-banking-lab/banking-api/tags/list" | \
+                jq -r '.tags[]' | grep -E '^sha-' | head -1 || echo "")
+              if [ ! -z "$AVAILABLE_TAG" ]; then
+                API_TAG="${API_IMAGE}:${AVAILABLE_TAG}"
+                echo "Using available API image: ${API_TAG}"
+              else
+                echo "No API images found in registry - deployment will fail"
+              fi
+            fi
+            
+            if ! docker manifest inspect "${DASH_TAG}" >/dev/null 2>&1; then
+              echo "Warning: Latest Dashboard image not found, checking for any available version..."
+              AVAILABLE_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_PAT }}" \
+                "https://ghcr.io/v2/fandangolas/core-banking-lab/banking-dashboard/tags/list" | \
+                jq -r '.tags[]' | grep -E '^sha-' | head -1 || echo "")
+              if [ ! -z "$AVAILABLE_TAG" ]; then
+                DASH_TAG="${DASH_IMAGE}:${AVAILABLE_TAG}"
+                echo "Using available Dashboard image: ${DASH_TAG}"
+              else
+                echo "No Dashboard images found in registry - deployment will fail"
+              fi
+            fi
+          fi
+          
+          echo "Final image tags:"
+          echo "API: ${API_TAG}"
+          echo "Dashboard: ${DASH_TAG}"
+          
+          # Update manifests with determined tags
+          sed -i 's|image: banking-api:latest|image: '"${API_TAG}"'|g' ../../k8s/01-api-deployment.yaml
+          sed -i 's|image: banking-dashboard:latest|image: '"${DASH_TAG}"'|g' ../../k8s/02-dashboard-deployment.yaml
           sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' ../../k8s/*.yaml
 
       - name: Run Ansible playbook

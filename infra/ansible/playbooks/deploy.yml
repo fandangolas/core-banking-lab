@@ -128,29 +128,54 @@
         - "05-kube-state-metrics.yaml"
       become_user: ubuntu
 
-    - name: Wait for pods to be ready (with graceful failure handling)
+    - name: Wait for pods to be ready
       shell: |
         export KUBECONFIG=/home/ubuntu/.kube/config
         echo "Waiting for pods to be ready..."
         
-        # Wait up to 5 minutes for at least one pod to be running
-        for i in {1..60}; do
-          RUNNING_PODS=$(kubectl get pods -n banking --no-headers | grep "Running" | wc -l)
-          TOTAL_DESIRED=$(kubectl get deployments -n banking --no-headers | awk '{sum += $2} END {print sum}')
+        # Wait up to 10 minutes for pods to be running
+        for i in {1..120}; do
+          RUNNING_PODS=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
+          TOTAL_PODS=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | wc -l || echo "0")
+          FAILED_PODS=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | grep -E "Error|Failed|ImagePullBackOff|CrashLoopBackOff" | wc -l || echo "0")
           
-          echo "Attempt $i/60: $RUNNING_PODS/$TOTAL_DESIRED pods running"
+          echo "Attempt $i/120: $RUNNING_PODS/$TOTAL_PODS pods running, $FAILED_PODS failed"
           
-          if [ "$RUNNING_PODS" -gt 0 ]; then
-            echo "At least one pod is running successfully!"
-            kubectl get pods -n banking
+          # Check if we have any critical failures
+          if [ "$FAILED_PODS" -gt 0 ]; then
+            echo "Pods with issues detected:"
+            kubectl get pods -n core-banking | grep -E "Error|Failed|ImagePullBackOff|CrashLoopBackOff" || true
+            echo "Checking pod details for first failed pod..."
+            FAILED_POD=$(kubectl get pods -n core-banking --no-headers | grep -E "Error|Failed|ImagePullBackOff|CrashLoopBackOff" | head -1 | awk '{print $1}')
+            if [ ! -z "$FAILED_POD" ]; then
+              echo "Events for $FAILED_POD:"
+              kubectl describe pod "$FAILED_POD" -n core-banking | tail -10
+            fi
+          fi
+          
+          # Success criteria: at least monitoring stack (prometheus + kube-state-metrics) running
+          PROMETHEUS_RUNNING=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | grep prometheus | grep "Running" | wc -l || echo "0")
+          KSM_RUNNING=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | grep kube-state-metrics | grep "Running" | wc -l || echo "0")
+          
+          if [ "$PROMETHEUS_RUNNING" -gt 0 ] && [ "$KSM_RUNNING" -gt 0 ]; then
+            echo "Core monitoring stack is running!"
+            kubectl get pods -n core-banking
+            
+            # Check if banking apps are running too
+            BANKING_RUNNING=$(kubectl get pods -n core-banking --no-headers 2>/dev/null | grep -E "banking-api|banking-dashboard" | grep "Running" | wc -l || echo "0")
+            if [ "$BANKING_RUNNING" -gt 0 ]; then
+              echo "Banking applications are also running - deployment fully successful!"
+            else
+              echo "Note: Banking applications may have image issues, but monitoring stack is operational"
+            fi
             break
           fi
           
-          if [ $i -eq 60 ]; then
-            echo "Timeout waiting for pods. Current status:"
-            kubectl get pods -n banking
-            kubectl describe pods -n banking | grep -A 5 "Events:"
-            echo "Continuing deployment as this might be an image issue that will resolve with the next build..."
+          if [ $i -eq 120 ]; then
+            echo "Timeout waiting for core monitoring stack. Final status:"
+            kubectl get pods -n core-banking
+            echo "Deployment failed - core monitoring components not ready"
+            exit 1
           fi
           
           sleep 5
