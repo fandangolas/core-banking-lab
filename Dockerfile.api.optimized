@@ -1,0 +1,26 @@
+# ====== BUILD ======
+FROM golang:1.23-alpine AS build
+RUN apk add --no-cache git ca-certificates
+WORKDIR /app
+ENV CGO_ENABLED=0 GOPROXY=https://proxy.golang.org,direct
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -trimpath -ldflags="-s -w" -o /server ./src
+
+# ====== RUNTIME ======
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates
+COPY --from=build /server /server
+EXPOSE 8080
+
+# Performance optimizations
+ENV GOMAXPROCS=8 \
+    GOGC=400 \
+    GOMEMLIMIT=1GiB
+
+# Use non-root user
+RUN adduser -D -u 65532 appuser
+USER appuser
+
+ENTRYPOINT ["/server"]
