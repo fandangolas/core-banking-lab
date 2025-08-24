@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banking-api
+  namespace: core-banking
+  labels:
+    app: banking-api
+    version: optimized
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: banking-api
+  template:
+    metadata:
+      labels:
+        app: banking-api
+        version: optimized
+    spec:
+      containers:
+      - name: banking-api
+        image: banking-api:optimized
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        # Performance tuning
+        - name: GOMAXPROCS
+          value: "8"  # Use 8 CPU cores
+        - name: GOGC
+          value: "400"  # GC runs when heap grows 4x (instead of default 2x)
+        - name: GOMEMLIMIT
+          value: "2GiB"  # Allow up to 2GB memory
+        # Application config
+        - name: SERVER_PORT
+          value: "8080"
+        - name: LOG_LEVEL
+          value: "error"  # Reduce logging overhead
+        - name: LOG_FORMAT
+          value: "text"  # Faster than JSON
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "2000m"  # 2 full cores minimum
+          limits:
+            memory: "2Gi"
+            cpu: "8000m"  # 8 cores maximum
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: banking-api-service
+  namespace: core-banking
+  labels:
+    app: banking-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: banking-api

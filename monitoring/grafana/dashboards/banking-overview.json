@@ -258,6 +258,17 @@
           "intervalFactor": 1,
           "legendFormat": "{{operation}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(banking_operations_total[5m]))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "Total",
+          "refId": "B"
         }
       ],
       "title": "Banking Operations Rate",
@@ -370,6 +381,17 @@
           "intervalFactor": 1,
           "legendFormat": "{{method}} {{endpoint}}",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(http_requests_total[5m]))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "Total",
+          "refId": "B"
         }
       ],
       "title": "HTTP Request Rate",
@@ -464,11 +486,22 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "50th percentile (P50)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
           "expr": "histogram_quantile(0.80, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "80th percentile",
-          "refId": "A"
+          "refId": "F"
         },
         {
           "datasource": {
@@ -1787,7 +1820,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"})",
+          "expr": "count by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"})",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -1852,7 +1885,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(count by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"}))",
+          "expr": "count(count by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2075,7 +2108,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"})",
+          "expr": "sum by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"})",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -2166,7 +2199,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"banking\", container!=\"POD\", container!=\"\"}[5m])) * 100",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"core-banking\", container!=\"POD\", container!=\"\"}[5m])) * 100",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"

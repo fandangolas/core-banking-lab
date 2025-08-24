@@ -1,0 +1,15 @@
+{
+  "name": "High Load Test - 1M Operations",
+  "description": "Stress test with 1 million operations across 1000 accounts",
+  "accounts": 1000,
+  "distribution": {
+    "deposit": 0.25,
+    "withdraw": 0.25,
+    "transfer": 0.35,
+    "balance": 0.15
+  },
+  "initial_balance": 10000.00,
+  "min_amount": 10.00,
+  "max_amount": 1000.00,
+  "think_time": 5000000
+}

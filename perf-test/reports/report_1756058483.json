@@ -1,0 +1,141 @@
+{
+  "test_name": "Default Banking Load Test",
+  "start_time": "2025-08-24T15:01:13.007260209-03:00",
+  "end_time": "2025-08-24T15:01:23.051566-03:00",
+  "duration": 10044305791,
+  "configuration": {
+    "APIURL": "http://localhost:8080",
+    "PrometheusURL": "http://localhost:9090",
+    "Workers": 10,
+    "Duration": 10000000000,
+    "RampUp": 10000000000,
+    "ReportPath": "./reports",
+    "IsolateMetrics": true
+  },
+  "scenario": {
+    "name": "Default Banking Load Test",
+    "description": "Balanced mix of banking operations",
+    "accounts": 1000,
+    "operations": null,
+    "distribution": {
+      "balance": 0.15,
+      "deposit": 0.25,
+      "transfer": 0.35,
+      "withdraw": 0.25
+    },
+    "initial_balance": 10000,
+    "min_amount": 10,
+    "max_amount": 1000,
+    "think_time": 10000000
+  },
+  "performance": {
+    "total_requests": 4681,
+    "successful_requests": 2719,
+    "failed_requests": 1962,
+    "success_rate": 0.5808587908566546,
+    "requests_per_second": 466.0351942086746,
+    "latency": {
+      "min": 109167,
+      "max": 9378500,
+      "mean": 701801,
+      "median": 672125,
+      "p50": 672125,
+      "p90": 970166,
+      "p95": 1154250,
+      "p99": 1784000,
+      "std_dev": 244149325576
+    },
+    "operations": {
+      "balance": {
+        "count": 671,
+        "success_rate": 1,
+        "mean_latency": 676360,
+        "p99_latency": 1993917
+      },
+      "deposit": {
+        "count": 1192,
+        "success_rate": 1,
+        "mean_latency": 738701,
+        "p99_latency": 2100834
+      },
+      "transfer": {
+        "count": 1662,
+        "success_rate": 0.30866425992779783,
+        "mean_latency": 692911,
+        "p99_latency": 1694833,
+        "errors": {
+          "HTTP 400: {\"code\":\"INSUFFICIENT_FUNDS\",\"message\":\"Insufficient funds for this transaction\"}": 1149
+        }
+      },
+      "withdraw": {
+        "count": 1156,
+        "success_rate": 0.2967128027681661,
+        "mean_latency": 691301,
+        "p99_latency": 1568500,
+        "errors": {
+          "HTTP 400: {\"error\":\"Saldo insuficiente\"}": 813
+        }
+      }
+    }
+  },
+  "system": {
+    "api": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      }
+    },
+    "load_tester": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 1.796875,
+        "average": 0,
+        "max": 0
+      }
+    }
+  },
+  "prometheus": {
+    "http_request_duration": {},
+    "http_request_total": {},
+    "http_in_flight": 0,
+    "custom_metrics": {},
+    "timestamp": "2025-08-24T15:01:23.044346-03:00"
+  },
+  "summary": {
+    "status": "NEEDS_IMPROVEMENT",
+    "total_operations": 4681,
+    "throughput_ops_per_sec": 466.0351942086746,
+    "p99_latency": "1.78ms",
+    "error_rate": 41.91412091433454,
+    "peak_cpu_percent": 0,
+    "peak_memory_mb": 0,
+    "bottlenecks": [
+      "Error rate above 5%"
+    ],
+    "recommendations": [
+      "Investigate error patterns and improve error handling"
+    ]
+  },
+  "errors": [
+    {
+      "type": "HTTP 400: {\"error\":\"Saldo insuficiente\"}",
+      "count": 813,
+      "percentage": 17.368083742790002
+    },
+    {
+      "type": "HTTP 400: {\"code\":\"INSUFFICIENT_FUNDS\",\"message\":\"Insufficient funds for this transaction\"}",
+      "count": 1149,
+      "percentage": 24.54603717154454
+    }
+  ]
+}

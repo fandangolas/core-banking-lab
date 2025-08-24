@@ -1,0 +1,529 @@
+{
+  "test_name": "Load Test - 1",
+  "start_time": "2025-08-24T14:57:40.934604583-03:00",
+  "end_time": "2025-08-24T14:58:40.990527-03:00",
+  "duration": 60055922417,
+  "configuration": {
+    "APIURL": "http://localhost:8080",
+    "PrometheusURL": "http://localhost:9090",
+    "Workers": 100,
+    "Duration": 60000000000,
+    "RampUp": 10000000000,
+    "ReportPath": "./reports",
+    "IsolateMetrics": true
+  },
+  "scenario": {
+    "name": "Load Test - 1",
+    "description": "Test with 100000 operations on 1000 accounts",
+    "accounts": 1000,
+    "operations": null,
+    "distribution": {
+      "balance": 0.15,
+      "deposit": 0.25,
+      "transfer": 0.35,
+      "withdraw": 0.25
+    },
+    "initial_balance": 10000,
+    "min_amount": 10,
+    "max_amount": 1000,
+    "think_time": 10000000
+  },
+  "performance": {
+    "total_requests": 469240,
+    "successful_requests": 70104,
+    "failed_requests": 399136,
+    "success_rate": 0.14939902821583836,
+    "requests_per_second": 7813.384277770621,
+    "latency": {
+      "min": 56041,
+      "max": 69496792,
+      "mean": 989019,
+      "median": 569709,
+      "p50": 569709,
+      "p90": 2141500,
+      "p95": 2845291,
+      "p99": 5292584,
+      "std_dev": 2708570427799
+    },
+    "operations": {
+      "balance": {
+        "count": 70120,
+        "success_rate": 0.9997718197375927,
+        "mean_latency": 942588,
+        "p99_latency": 5137000,
+        "errors": {
+          "request failed: Get \"http://localhost:8080/accounts/1011/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1021/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1034/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1073/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1106/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1126/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1217/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1312/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1390/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1461/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1470/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1710/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1791/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1816/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1837/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://localhost:8080/accounts/1925/balance\": context deadline exceeded": 1
+        }
+      },
+      "deposit": {
+        "count": 117714,
+        "success_rate": 0,
+        "mean_latency": 971468,
+        "p99_latency": 5222583,
+        "errors": {
+          "HTTP 400: {\"error\":\"Invalid value\"}": 117687,
+          "request failed: Post \"http://localhost:8080/accounts/1059/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1143/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1159/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1171/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1281/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1360/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1395/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1413/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1421/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1527/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1560/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1591/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1673/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1733/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1752/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1755/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1758/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1772/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1788/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1794/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1806/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1813/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1847/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1872/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1931/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1956/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1958/deposit\": context deadline exceeded": 1
+        }
+      },
+      "transfer": {
+        "count": 164459,
+        "success_rate": 0,
+        "mean_latency": 1042225,
+        "p99_latency": 5456167,
+        "errors": {
+          "HTTP 400: {\"code\":\"VALIDATION_ERROR\",\"message\":\"Invalid request format\"}": 164433,
+          "request failed: Post \"http://localhost:8080/accounts/transfer\": context deadline exceeded": 26
+        }
+      },
+      "withdraw": {
+        "count": 116947,
+        "success_rate": 0,
+        "mean_latency": 959701,
+        "p99_latency": 5208167,
+        "errors": {
+          "HTTP 400: {\"error\":\"Valor inválido\"}": 116928,
+          "request failed: Post \"http://localhost:8080/accounts/1021/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1053/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1103/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1113/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1241/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1264/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1395/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1407/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1457/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1548/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1623/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1675/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1760/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1773/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1797/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1800/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1846/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1923/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://localhost:8080/accounts/1976/withdraw\": context deadline exceeded": 1
+        }
+      }
+    }
+  },
+  "system": {
+    "api": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      }
+    },
+    "load_tester": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 1.796875,
+        "average": 0,
+        "max": 0
+      }
+    }
+  },
+  "prometheus": {
+    "http_request_duration": {},
+    "http_request_total": {},
+    "http_in_flight": 0,
+    "custom_metrics": {},
+    "timestamp": "2025-08-24T14:58:40.987792-03:00"
+  },
+  "summary": {
+    "status": "NEEDS_IMPROVEMENT",
+    "total_operations": 469240,
+    "throughput_ops_per_sec": 7813.384277770621,
+    "p99_latency": "5.29ms",
+    "error_rate": 85.06009717841616,
+    "peak_cpu_percent": 0,
+    "peak_memory_mb": 0,
+    "bottlenecks": [
+      "Error rate above 5%"
+    ],
+    "recommendations": [
+      "Investigate error patterns and improve error handling"
+    ]
+  },
+  "errors": [
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1126/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1791/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1773/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1171/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1021/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/transfer\": context deadline exceeded",
+      "count": 26,
+      "percentage": 0.005540874605745461
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1053/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1143/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1421/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1813/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1390/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1591/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1395/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1958/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1788/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "HTTP 400: {\"error\":\"Valor inválido\"}",
+      "count": 116928,
+      "percentage": 24.918591765407893
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1395/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1034/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1159/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1021/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1673/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1872/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1772/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "HTTP 400: {\"code\":\"VALIDATION_ERROR\",\"message\":\"Invalid request format\"}",
+      "count": 164433,
+      "percentage": 35.04240900179013
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1758/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1407/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1760/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1264/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1846/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1797/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1103/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1217/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1806/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1457/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1755/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1527/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1816/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1281/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1073/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1733/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1059/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1675/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1976/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1710/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1360/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1413/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1794/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1560/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1800/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1923/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1847/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1470/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1011/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1312/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1956/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1623/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1106/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1752/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1548/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1461/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1837/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1241/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1931/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "HTTP 400: {\"error\":\"Invalid value\"}",
+      "count": 117687,
+      "percentage": 25.080342681783307
+    },
+    {
+      "type": "request failed: Get \"http://localhost:8080/accounts/1925/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    },
+    {
+      "type": "request failed: Post \"http://localhost:8080/accounts/1113/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002131105617594408
+    }
+  ]
+}
