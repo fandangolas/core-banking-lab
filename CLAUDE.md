@@ -12,21 +12,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run specific test**: `go test ./tests/integration/account -run TestTransferSuccess`
 - **Build**: `go build -o bank-api src/main.go`
 
-### React Dashboard
-- **Start dashboard dev server**: `cd dev/dashboard && npm run dev` (runs on localhost:5173)
-- **Build dashboard**: `cd dev/dashboard && npm run build`
-- **Dashboard dependencies**: `cd dev/dashboard && npm install`
+### Performance Testing Suite (`perf-test/`)
+- **Start load test server**: `cd perf-test && go run cmd/loadtest/main.go -mode=server` (web UI on localhost:9999)
+- **Run CLI load test**: `cd perf-test && go run cmd/loadtest/main.go -workers=100 -duration=60s`
+- **Docker stack**: `cd perf-test && docker-compose up --build` (includes API + Perf UI + Monitoring)
+- **Build perf-test binary**: `cd perf-test && go build -o perf-test ./cmd/loadtest`
 
 ### Docker Development
-- **Start full stack**: `docker-compose up --build`
+- **Start banking stack**: `docker-compose up --build` (API + Prometheus + Grafana)
+- **Start performance testing stack**: `cd perf-test && docker-compose up --build` (API + Perf UI + Monitoring)
 - **Build API container**: `docker build -f Dockerfile.api -t bank-api .`
-- **Build dashboard container**: `cd dev/dashboard && docker build -t dashboard .`
 
 ## Architecture Overview
 
-This project implements a **Diplomat Architecture** (variant of Ports and Adapters), focusing on concurrent banking operations with thread-safe account management.
+This project implements a **Diplomat Architecture** (variant of Ports and Adapters), focusing on concurrent banking operations with thread-safe account management, plus a comprehensive performance testing suite.
 
-### Core Structure
+### Core Banking API Structure
 - **`src/domain/`**: Core business logic with thread-safe account operations
 - **`src/models/`**: Data structures (Account, Event models)
 - **`src/handlers/`**: HTTP request handlers using Gin framework
@@ -38,7 +39,21 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
   - `events/`: Event broker for real-time updates
 - **`src/metrics/`**: Application metrics collection with Prometheus integration
 
+### Performance Testing Suite Structure (`perf-test/`)
+- **`cmd/loadtest/`**: Main load test application entry point
+- **`internal/config/`**: Load test configuration management
+- **`internal/generator/`**: Load generation engine with worker management and ramp-up
+- **`internal/executor/`**: HTTP client for banking API operations
+- **`internal/metrics/`**: Performance metrics collection and Prometheus integration
+- **`internal/server/`**: Web server for performance test dashboard
+- **`internal/monitor/`**: System resource monitoring (CPU, memory)
+- **`internal/reporter/`**: Test result analysis and report generation
+- **`web/`**: Performance test web dashboard (Bootstrap + vanilla JS)
+- **`scenarios/`**: Test scenario definitions (JSON)
+- **`reports/`**: Generated test reports and results
+
 ### Key Design Patterns
+#### Banking API Patterns
 - **Ordered locking** in transfers to prevent deadlocks (by account ID)
 - **Mutex-protected account operations** for concurrency safety
 - **Repository pattern** with interface for future PostgreSQL migration
@@ -46,6 +61,14 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 - **Singleton pattern** with `sync.Once` for test environment setup
 - **Dependency injection** with global repository instance for clean architecture
 - **Configuration-based middleware** supporting multiple environments
+
+#### Performance Testing Patterns
+- **Worker pool pattern** with configurable concurrency and gradual ramp-up
+- **Circuit breaker pattern** for handling API failures during load tests
+- **Metrics isolation** separating API process metrics from test runner metrics
+- **Real-time WebSocket updates** for live test monitoring
+- **Scenario-based testing** with JSON configuration and operation mix control
+- **Report generation** with automated bottleneck identification and recommendations
 
 ## Testing Strategy
 
@@ -59,6 +82,23 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 - Full request/response cycle validation
 - Account state verification across operations
 - Error handling and edge case coverage
+
+### Performance Tests (`perf-test/`)
+#### Load Testing Modes
+- **CLI Mode**: Direct command-line execution with console output
+- **Server Mode**: Web dashboard for interactive test configuration
+- **Docker Mode**: Complete containerized testing environment
+
+#### Test Scenarios
+- **Balanced Load**: Default mix of all operations (25% deposit, 25% withdraw, 35% transfer, 15% balance)
+- **High Concurrency**: Stress testing with 500+ workers and minimal think time
+- **Transfer Heavy**: Focus on concurrent transfer operations for deadlock testing
+- **Read Heavy**: Balance check operations for read performance analysis
+
+#### Metrics Collection
+- **Performance Metrics**: RPS, latency percentiles (P50, P90, P95, P99), success rates
+- **System Metrics**: CPU, memory usage with process isolation
+- **Prometheus Integration**: Historical metrics and alerting capabilities
 
 ### Test Utilities (`tests/integration/testenv/`)
 - Helper functions for setting up test router
@@ -101,7 +141,7 @@ The application uses environment-based configuration via the `src/config` packag
 - **SERVER_PORT**: API server port (default: "8080")
 - **SERVER_HOST**: API server host (default: "localhost")
 - **RATE_LIMIT_REQUESTS_PER_MINUTE**: Rate limiting (default: 100)
-- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins (default: "http://localhost:5173")
+- **CORS_ALLOWED_ORIGINS**: Comma-separated list of allowed origins (default: "http://localhost:9999")
 - **CORS_ALLOWED_METHODS**: Comma-separated HTTP methods (default: "GET,POST,PUT,DELETE,OPTIONS")
 - **CORS_ALLOWED_HEADERS**: Comma-separated allowed headers
 - **CORS_ALLOW_CREDENTIALS**: Enable credentials (default: false)
@@ -124,12 +164,32 @@ Enhanced GitHub Actions workflow with comprehensive quality checks:
 - **Race condition detection**: `go test -race` for concurrent safety
 - **Test execution**: Full test suite with verbose output
 
+## Deployment Options
+
+### Local Development
+- **Direct Go execution**: `go run src/main.go` for API, `cd perf-test && go run cmd/loadtest/main.go -mode=server` for testing
+- **Docker Compose**: Complete containerized environment with monitoring
+
+### Kubernetes Deployment
+- **Infrastructure**: K3s cluster provisioning with Terraform + Ansible (`infra/`)
+- **Manifests**: Complete k8s deployments in `k8s/` directory
+- **Monitoring**: Helm-based kube-prometheus-stack with custom banking dashboards
+- **Access Ports**: API (30080), Grafana (30030), Prometheus (30090), Perf Test UI (30099)
+
+### Monitoring Stack
+- **Prometheus**: Metrics collection from banking API (`/prometheus` endpoint)
+- **Grafana**: Pre-configured dashboards for banking and kubernetes metrics
+- **Alerting**: AlertManager for production monitoring
+- **Node Exporter**: Host-level metrics collection
+
 ## Future Migration Notes
 - Database: Currently in-memory, planned PostgreSQL migration via `database/postgres.go`
 - The Repository interface is designed for easy database adapter swapping
-- Docker and Kubernetes deployment configurations are included for scaling
+- Performance testing can be integrated into CI/CD for automated performance regression detection
 
 ## Development Tips
+
+### Banking API Development
 - Always reset the database in integration tests: `defer database.Repo.Reset()`
 - Use consistent account ID ordering in concurrent operations to avoid deadlocks
 - Test concurrent scenarios extensively when modifying domain logic
@@ -137,3 +197,17 @@ Enhanced GitHub Actions workflow with comprehensive quality checks:
 - Configuration is loaded once at startup - restart service after environment changes
 - Prometheus metrics are automatically collected for all HTTP endpoints
 - Use the test environment singleton pattern for consistent test setup
+
+### Performance Testing Development
+- Start with low worker counts and short durations when testing changes
+- Use ramp-up periods to avoid overwhelming the system during testing
+- Monitor system resources during tests to identify bottlenecks
+- Check test reports in `perf-test/reports/` for automated analysis and recommendations
+- Use scenario files for repeatable test configurations
+- The performance test UI includes helpful tooltips explaining worker behavior and ramp-up benefits
+
+### Project Structure Notes
+- **Removed Components**: The React dashboard (`dev/dashboard/`) has been removed in favor of the performance test UI
+- **Current UI**: Performance testing dashboard at http://localhost:9999 provides comprehensive testing interface
+- **Monitoring**: Both Docker and Kubernetes setups include Prometheus + Grafana for full observability
+- **K8s Deployment**: Use `infra/ansible/playbooks/deploy-with-helm.yml` for complete k3s cluster deployment
