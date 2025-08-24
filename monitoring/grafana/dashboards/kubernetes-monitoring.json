@@ -90,7 +90,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(count by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"}))",
+          "expr": "count(count by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -359,7 +359,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"})",
+          "expr": "count by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"})",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -594,7 +594,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (container_memory_usage_bytes{namespace=\"banking\", container!=\"POD\", container!=\"\"})",
+          "expr": "sum by (pod) (container_memory_usage_bytes{namespace=\"core-banking\", container!=\"POD\", container!=\"\"})",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -685,7 +685,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"banking\", container!=\"POD\", container!=\"\"}[5m])) * 100",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"core-banking\", container!=\"POD\", container!=\"\"}[5m])) * 100",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
