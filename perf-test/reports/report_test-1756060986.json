@@ -1,0 +1,241 @@
+{
+  "test_name": "Load Test - 1",
+  "start_time": "2025-08-24T18:43:06.826323567Z",
+  "end_time": "2025-08-24T18:44:06.84817222Z",
+  "duration": 60021848653,
+  "configuration": {
+    "APIURL": "http://banking-api:8080",
+    "PrometheusURL": "http://localhost:9090",
+    "Workers": 100,
+    "Duration": 60000000000,
+    "RampUp": 10000000000,
+    "ReportPath": "./reports",
+    "IsolateMetrics": true
+  },
+  "scenario": {
+    "name": "Load Test - 1",
+    "description": "Test with 100000 operations on 1000 accounts",
+    "accounts": 1000,
+    "operations": null,
+    "distribution": {
+      "balance": 0.16666666666666666,
+      "deposit": 0.2777777777777778,
+      "transfer": 0.16666666666666666,
+      "withdraw": 0.3888888888888889
+    },
+    "initial_balance": 10000,
+    "min_amount": 100,
+    "max_amount": 1000,
+    "think_time": 10000000
+  },
+  "performance": {
+    "total_requests": 448254,
+    "successful_requests": 383781,
+    "failed_requests": 64473,
+    "success_rate": 0.8561686008379178,
+    "requests_per_second": 7468.180505259987,
+    "latency": {
+      "min": 29167,
+      "max": 60571000,
+      "mean": 1038341,
+      "median": 708250,
+      "p50": 708250,
+      "p90": 2232166,
+      "p95": 2810708,
+      "p99": 4220917,
+      "std_dev": 1672283311384
+    },
+    "operations": {
+      "balance": {
+        "count": 74764,
+        "success_rate": 0.9999598737360227,
+        "mean_latency": 919917,
+        "p99_latency": 4053958,
+        "errors": {
+          "request failed: Get \"http://banking-api:8080/accounts/280/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://banking-api:8080/accounts/588/balance\": context deadline exceeded": 1,
+          "request failed: Get \"http://banking-api:8080/accounts/828/balance\": context deadline exceeded": 1
+        }
+      },
+      "deposit": {
+        "count": 124427,
+        "success_rate": 0.9999357052729713,
+        "mean_latency": 1085664,
+        "p99_latency": 4285458,
+        "errors": {
+          "request failed: Post \"http://banking-api:8080/accounts/142/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/197/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/259/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/399/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/599/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/641/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/81/deposit\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/954/deposit\": context deadline exceeded": 1
+        }
+      },
+      "transfer": {
+        "count": 74644,
+        "success_rate": 0.7402738331279138,
+        "mean_latency": 1065793,
+        "p99_latency": 4211709,
+        "errors": {
+          "HTTP 400: {\"code\":\"INSUFFICIENT_FUNDS\",\"message\":\"Insufficient funds for this transaction\"}": 19387
+        }
+      },
+      "withdraw": {
+        "count": 174419,
+        "success_rate": 0.7415705857733389,
+        "mean_latency": 1043597,
+        "p99_latency": 4226916,
+        "errors": {
+          "HTTP 400: {\"error\":\"Saldo insuficiente\"}": 45068,
+          "request failed: Post \"http://banking-api:8080/accounts/157/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/312/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/353/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/36/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/499/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/871/withdraw\": context deadline exceeded": 1,
+          "request failed: Post \"http://banking-api:8080/accounts/971/withdraw\": context deadline exceeded": 1
+        }
+      }
+    }
+  },
+  "system": {
+    "api": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      }
+    }
+  },
+  "prometheus": {
+    "http_request_duration": {},
+    "http_request_total": {},
+    "http_in_flight": 0,
+    "custom_metrics": {},
+    "timestamp": "2025-08-24T18:44:06.845764137Z"
+  },
+  "summary": {
+    "status": "NEEDS_IMPROVEMENT",
+    "total_operations": 448254,
+    "throughput_ops_per_sec": 7468.180505259987,
+    "p99_latency": "4.22ms",
+    "error_rate": 14.38313991620822,
+    "peak_cpu_percent": 0,
+    "peak_memory_mb": 0,
+    "bottlenecks": [
+      "Error rate above 5%"
+    ],
+    "recommendations": [
+      "Investigate error patterns and improve error handling"
+    ]
+  },
+  "errors": [
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/81/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/259/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/142/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/954/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/157/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/499/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/197/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Get \"http://banking-api:8080/accounts/280/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/971/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Get \"http://banking-api:8080/accounts/588/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/641/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "HTTP 400: {\"error\":\"Saldo insuficiente\"}",
+      "count": 45068,
+      "percentage": 10.054121100982925
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/312/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Get \"http://banking-api:8080/accounts/828/balance\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/36/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/353/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/399/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/871/withdraw\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "request failed: Post \"http://banking-api:8080/accounts/599/deposit\": context deadline exceeded",
+      "count": 1,
+      "percentage": 0.0002230878028974644
+    },
+    {
+      "type": "HTTP 400: {\"code\":\"INSUFFICIENT_FUNDS\",\"message\":\"Insufficient funds for this transaction\"}",
+      "count": 19387,
+      "percentage": 4.325003234773142
+    }
+  ]
+}

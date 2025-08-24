@@ -1,0 +1,117 @@
+{
+  "test_name": "Default Banking Load Test",
+  "start_time": "2025-08-24T15:05:32.730427-03:00",
+  "end_time": "2025-08-24T15:05:47.775262-03:00",
+  "duration": 15044835000,
+  "configuration": {
+    "APIURL": "http://localhost:8080",
+    "PrometheusURL": "http://localhost:9090",
+    "Workers": 20,
+    "Duration": 15000000000,
+    "RampUp": 10000000000,
+    "ReportPath": "./reports",
+    "IsolateMetrics": true
+  },
+  "scenario": {
+    "name": "Default Banking Load Test",
+    "description": "Balanced mix of banking operations with realistic amounts",
+    "accounts": 1000,
+    "operations": null,
+    "distribution": {
+      "balance": 0.15,
+      "deposit": 0.25,
+      "transfer": 0.35,
+      "withdraw": 0.25
+    },
+    "initial_balance": 100000,
+    "min_amount": 1,
+    "max_amount": 10,
+    "think_time": 10000000
+  },
+  "performance": {
+    "total_requests": 18362,
+    "successful_requests": 18362,
+    "failed_requests": 0,
+    "success_rate": 1,
+    "requests_per_second": 1220.4853027633735,
+    "latency": {
+      "min": 81042,
+      "max": 29125791,
+      "mean": 698119,
+      "median": 419000,
+      "p50": 419000,
+      "p90": 896917,
+      "p95": 1546459,
+      "p99": 6643708,
+      "std_dev": 2452565288411
+    },
+    "operations": {
+      "balance": {
+        "count": 2805,
+        "success_rate": 1,
+        "mean_latency": 629589,
+        "p99_latency": 5912333
+      },
+      "deposit": {
+        "count": 4662,
+        "success_rate": 1,
+        "mean_latency": 679518,
+        "p99_latency": 5851459
+      },
+      "transfer": {
+        "count": 6354,
+        "success_rate": 1,
+        "mean_latency": 700531,
+        "p99_latency": 6686709
+      },
+      "withdraw": {
+        "count": 4541,
+        "success_rate": 1,
+        "mean_latency": 756171,
+        "p99_latency": 8169625
+      }
+    }
+  },
+  "system": {
+    "api": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      }
+    },
+    "load_tester": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 1.796875,
+        "average": 0,
+        "max": 0
+      }
+    }
+  },
+  "prometheus": {
+    "http_request_duration": {},
+    "http_request_total": {},
+    "http_in_flight": 0,
+    "custom_metrics": {},
+    "timestamp": "2025-08-24T15:05:47.770971-03:00"
+  },
+  "summary": {
+    "status": "EXCELLENT",
+    "total_operations": 18362,
+    "throughput_ops_per_sec": 1220.4853027633735,
+    "p99_latency": "6.64ms",
+    "error_rate": 0,
+    "peak_cpu_percent": 0,
+    "peak_memory_mb": 0
+  }
+}

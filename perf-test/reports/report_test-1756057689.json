@@ -1,0 +1,149 @@
+{
+  "test_name": "Load Test - 1",
+  "start_time": "2025-08-24T14:48:09.61536175-03:00",
+  "end_time": "2025-08-24T14:49:09.672486-03:00",
+  "duration": 60057124250,
+  "configuration": {
+    "APIURL": "http://localhost:8080",
+    "PrometheusURL": "http://localhost:9090",
+    "Workers": 100,
+    "Duration": 60000000000,
+    "RampUp": 10000000000,
+    "ReportPath": "./reports",
+    "IsolateMetrics": true
+  },
+  "scenario": {
+    "name": "Load Test - 1",
+    "description": "Test with 100000 operations on 1000 accounts",
+    "accounts": 1000,
+    "operations": null,
+    "distribution": {
+      "balance": 0.15,
+      "deposit": 0.25,
+      "transfer": 0.35,
+      "withdraw": 0.25
+    },
+    "initial_balance": 10000,
+    "min_amount": 10,
+    "max_amount": 1000,
+    "think_time": 10000000
+  },
+  "performance": {
+    "total_requests": 462112,
+    "successful_requests": 69182,
+    "failed_requests": 392930,
+    "success_rate": 0.14970829582438888,
+    "requests_per_second": 7694.5409186821,
+    "latency": {
+      "min": 58375,
+      "max": 34983250,
+      "mean": 1020781,
+      "median": 637584,
+      "p50": 637584,
+      "p90": 2290750,
+      "p95": 3040334,
+      "p99": 5079250,
+      "std_dev": 1422362230370
+    },
+    "operations": {
+      "balance": {
+        "count": 69182,
+        "success_rate": 1,
+        "mean_latency": 992479,
+        "p99_latency": 4994625
+      },
+      "deposit": {
+        "count": 115702,
+        "success_rate": 0,
+        "mean_latency": 1001283,
+        "p99_latency": 5009000,
+        "errors": {
+          "HTTP 400: {\"error\":\"Invalid value\"}": 115702
+        }
+      },
+      "transfer": {
+        "count": 161894,
+        "success_rate": 0,
+        "mean_latency": 1057982,
+        "p99_latency": 5137792,
+        "errors": {
+          "HTTP 400: {\"code\":\"VALIDATION_ERROR\",\"message\":\"Invalid request format\"}": 161894
+        }
+      },
+      "withdraw": {
+        "count": 115334,
+        "success_rate": 0,
+        "mean_latency": 1005099,
+        "p99_latency": 5111666,
+        "errors": {
+          "HTTP 400: {\"error\":\"Valor inválido\"}": 115334
+        }
+      }
+    }
+  },
+  "system": {
+    "api": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      }
+    },
+    "load_tester": {
+      "cpu_usage": {
+        "current": 0,
+        "average": 0,
+        "max": 0
+      },
+      "memory_usage": {
+        "current": 1.796875,
+        "average": 0,
+        "max": 0
+      }
+    }
+  },
+  "prometheus": {
+    "http_request_duration": {},
+    "http_request_total": {},
+    "http_in_flight": 0,
+    "custom_metrics": {},
+    "timestamp": "2025-08-24T14:49:09.670147-03:00"
+  },
+  "summary": {
+    "status": "NEEDS_IMPROVEMENT",
+    "total_operations": 462112,
+    "throughput_ops_per_sec": 7694.5409186821,
+    "p99_latency": "5.08ms",
+    "error_rate": 85.0291704175611,
+    "peak_cpu_percent": 0,
+    "peak_memory_mb": 0,
+    "bottlenecks": [
+      "Error rate above 5%"
+    ],
+    "recommendations": [
+      "Investigate error patterns and improve error handling"
+    ]
+  },
+  "errors": [
+    {
+      "type": "HTTP 400: {\"error\":\"Valor inválido\"}",
+      "count": 115334,
+      "percentage": 24.958018835260713
+    },
+    {
+      "type": "HTTP 400: {\"error\":\"Invalid value\"}",
+      "count": 115702,
+      "percentage": 25.03765320961152
+    },
+    {
+      "type": "HTTP 400: {\"code\":\"VALIDATION_ERROR\",\"message\":\"Invalid request format\"}",
+      "count": 161894,
+      "percentage": 35.03349837268887
+    }
+  ]
+}

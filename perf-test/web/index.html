@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Banking Load Test Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .metric-card {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .status-running {
+            color: #28a745;
+            animation: pulse 1.5s infinite;
+        }
+        .status-stopped {
+            color: #dc3545;
+        }
+        .status-idle {
+            color: #6c757d;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .operation-badge {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+        .test-config-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .latency-bar {
+            height: 8px;
+            background: linear-gradient(to right, #28a745 0%, #ffc107 70%, #dc3545 100%);
+            border-radius: 4px;
+            position: relative;
+        }
+        .latency-marker {
+            position: absolute;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-chart-line"></i> Core Banking Load Test Dashboard
+            </span>
+            <div class="d-flex align-items-center">
+                <span id="connectionStatus" class="text-white me-3">
+                    <i class="fas fa-circle status-idle"></i> Disconnected
+                </span>
+                <span id="testStatus" class="badge bg-secondary">
+                    <i class="fas fa-circle"></i> Idle
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <!-- Left Sidebar - Test Configuration -->
+            <div class="col-lg-3">
+                <div class="sidebar p-3">
+                    <h5 class="mb-3">Test Configuration</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Scenario Preset</label>
+                        <select class="form-select" id="scenarioPreset">
+                            <option value="custom">Custom</option>
+                            <option value="default">Default - Balanced</option>
+                            <option value="high-concurrency">High Concurrency</option>
+                            <option value="read-heavy">Read Heavy</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Test Name</label>
+                        <input type="text" class="form-control" id="testName" value="Load Test">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Total Operations</label>
+                        <input type="text" class="form-control" id="totalOperations" value="100.000" data-value="100000" min="100">
+                    </div>
+
+                    <!-- Stage 1: Account Setup -->
+                    <h6 class="mt-4 mb-3 text-primary">
+                        <i class="fas fa-users"></i> Stage 1: Account Setup
+                    </h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Number of Accounts (X)</label>
+                        <input type="number" class="form-control" id="accountCount" value="1000" min="10">
+                        <small class="text-muted">Total accounts to create for testing</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Initial Balance per Account (BRL)</label>
+                        <input type="text" class="form-control" id="initialBalance" value="R$ 1.000,00" data-value="100000" min="100">
+                        <small class="text-muted">Valor inicial em reais</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Workers 
+                            <i class="fas fa-info-circle text-info" data-bs-toggle="tooltip" data-bs-placement="right" 
+                               title="Workers are concurrent threads that execute banking operations. Each worker continuously performs deposits, withdrawals, transfers, and balance checks. More workers = higher concurrency and load on the system."></i>
+                        </label>
+                        <input type="range" class="form-range" id="workers" min="1" max="500" value="100">
+                        <small class="text-muted">Value: <span id="workersValue">100</span></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-control" id="duration" value="60" min="10">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Ramp-up (seconds)
+                            <i class="fas fa-info-circle text-info" data-bs-toggle="tooltip" data-bs-placement="right" 
+                               title="Gradual worker startup period. Instead of starting all workers at once (which can overwhelm the system), workers are started incrementally over this duration. This provides a more realistic load pattern and prevents initial system shock."></i>
+                        </label>
+                        <input type="number" class="form-control" id="rampUp" value="10" min="0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Think Time (milliseconds)
+                            <i class="fas fa-info-circle text-info" data-bs-toggle="tooltip" data-bs-placement="right" 
+                               title="Delay between operations per worker. Set to 0 for maximum load, or higher values to simulate realistic user behavior with pauses between actions."></i>
+                        </label>
+                        <input type="number" class="form-control" id="thinkTime" value="0" min="0">
+                    </div>
+
+                    <!-- Stage 2: Operation Configuration -->
+                    <h6 class="mt-4 mb-3 text-success">
+                        <i class="fas fa-cogs"></i> Stage 2: Operation Configuration
+                    </h6>
+                    <div class="mb-2">
+                        <label class="form-label">Deposit <span class="badge bg-info" id="depositPercent">25%</span></label>
+                        <input type="range" class="form-range" id="depositMix" min="0" max="100" value="25">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Withdraw <span class="badge bg-warning" id="withdrawPercent">25%</span></label>
+                        <input type="range" class="form-range" id="withdrawMix" min="0" max="100" value="25">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Transfer <span class="badge bg-success" id="transferPercent">35%</span></label>
+                        <input type="range" class="form-range" id="transferMix" min="0" max="100" value="35">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Balance <span class="badge bg-secondary" id="balancePercent">15%</span></label>
+                        <input type="range" class="form-range" id="balanceMix" min="0" max="100" value="15">
+                    </div>
+
+                    <h6 class="mt-3 mb-3">Transaction Amount Range (cents)</h6>
+                    <div class="row">
+                        <div class="col">
+                            <label class="form-label">Min Amount (BRL)</label>
+                            <input type="text" class="form-control" id="minAmount" value="R$ 1,00" data-value="100" min="1">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Max Amount (BRL)</label>
+                            <input type="text" class="form-control" id="maxAmount" value="R$ 10,00" data-value="1000" min="1">
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-success" id="startBtn">
+                            <i class="fas fa-play"></i> Start Test
+                        </button>
+                        <button class="btn btn-danger" id="stopBtn" disabled>
+                            <i class="fas fa-stop"></i> Stop Test
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-lg-9">
+                <!-- Real-time Metrics Cards -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-primary" id="totalRequests">0</div>
+                                <div class="metric-label">Total Requests</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-success" id="successRate">0%</div>
+                                <div class="metric-label">Success Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-warning" id="rps">0</div>
+                                <div class="metric-label">Requests/sec</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card metric-card">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-danger" id="p99Latency">0ms</div>
+                                <div class="metric-label">P99 Latency</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Metrics -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Operation Breakdown</h6>
+                                <div id="operationStats" class="d-flex justify-content-around">
+                                    <div class="text-center">
+                                        <span class="badge bg-info operation-badge">Deposit</span>
+                                        <div class="small" id="depositStats">0</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <span class="badge bg-warning operation-badge">Withdraw</span>
+                                        <div class="small" id="withdrawStats">0</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <span class="badge bg-success operation-badge">Transfer</span>
+                                        <div class="small" id="transferStats">0</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <span class="badge bg-secondary operation-badge">Balance</span>
+                                        <div class="small" id="balanceStats">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Throughput Over Time</h6>
+                                <div class="chart-container">
+                                    <canvas id="throughputChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Latency Distribution</h6>
+                                <div class="chart-container">
+                                    <canvas id="latencyChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test History -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Test History</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Test Name</th>
+                                        <th>Start Time</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th>Throughput</th>
+                                        <th>P99 Latency</th>
+                                        <th>Success Rate</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTable">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted">No tests run yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

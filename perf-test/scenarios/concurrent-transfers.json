@@ -1,0 +1,15 @@
+{
+  "name": "Concurrent Transfer Stress Test",
+  "description": "Heavy concurrent transfers to test deadlock prevention",
+  "accounts": 100,
+  "distribution": {
+    "deposit": 0.05,
+    "withdraw": 0.05,
+    "transfer": 0.85,
+    "balance": 0.05
+  },
+  "initial_balance": 50000.00,
+  "min_amount": 100.00,
+  "max_amount": 5000.00,
+  "think_time": 1000000
+}

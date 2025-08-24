@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: perf-test-ui
+  namespace: core-banking
+  labels:
+    app: perf-test-ui
+    component: performance-testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: perf-test-ui
+  template:
+    metadata:
+      labels:
+        app: perf-test-ui
+        component: performance-testing
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: perf-test-ui
+        image: perf-test:v5
+        imagePullPolicy: Never # Use local image
+        ports:
+        - containerPort: 9999
+          name: http
+        env:
+        - name: API_URL
+          value: "http://banking-api-service:8080"
+        - name: PROMETHEUS_URL
+          value: "http://prometheus-service:9090"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9999
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9999
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: reports-storage
+          mountPath: /app/reports
+      volumes:
+      - name: reports-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: perf-test-ui-service
+  namespace: core-banking
+  labels:
+    app: perf-test-ui
+spec:
+  type: NodePort
+  ports:
+  - port: 9999
+    targetPort: 9999
+    nodePort: 30099
+    name: http
+  selector:
+    app: perf-test-ui
