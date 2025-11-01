@@ -107,7 +107,7 @@ func (c *Container) initDatabase() error {
 	dbConfig := postgres.NewConfigFromEnv()
 
 	// Initialize PostgreSQL repository with configuration
-	repo, err := postgres.NewPostgresRepository(dbConfig.ConnectionString())
+	repo, err := postgres.NewPostgresRepository(dbConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create PostgreSQL repository: %w", err)
 	}

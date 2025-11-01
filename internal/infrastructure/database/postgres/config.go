@@ -8,29 +8,33 @@ import (
 
 // Config holds PostgreSQL connection configuration
 type Config struct {
-	Host            string
-	Port            int
-	Database        string
-	User            string
-	Password        string
-	SSLMode         string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime string
+	Host              string
+	Port              int
+	Database          string
+	User              string
+	Password          string
+	SSLMode           string
+	MaxOpenConns      int
+	MaxIdleConns      int
+	ConnMaxLifetime   string
+	ConnMaxIdleTime   string
+	HealthCheckPeriod string
 }
 
 // NewConfigFromEnv creates a database configuration from environment variables
 func NewConfigFromEnv() *Config {
 	return &Config{
-		Host:            getEnv("DB_HOST", "localhost"),
-		Port:            getEnvAsInt("DB_PORT", 5432),
-		Database:        getEnv("DB_NAME", "banking"),
-		User:            getEnv("DB_USER", "banking"),
-		Password:        getEnv("DB_PASSWORD", "banking_secure_pass_2024"),
-		SSLMode:         getEnv("DB_SSLMODE", "disable"),
-		MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-		MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
-		ConnMaxLifetime: getEnv("DB_CONN_MAX_LIFETIME", "30m"),
+		Host:              getEnv("DB_HOST", "localhost"),
+		Port:              getEnvAsInt("DB_PORT", 5432),
+		Database:          getEnv("DB_NAME", "banking"),
+		User:              getEnv("DB_USER", "banking"),
+		Password:          getEnv("DB_PASSWORD", "banking_secure_pass_2024"),
+		SSLMode:           getEnv("DB_SSLMODE", "disable"),
+		MaxOpenConns:      getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+		MaxIdleConns:      getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+		ConnMaxLifetime:   getEnv("DB_CONN_MAX_LIFETIME", "30m"),
+		ConnMaxIdleTime:   getEnv("DB_CONN_MAX_IDLE_TIME", "5m"),
+		HealthCheckPeriod: getEnv("DB_HEALTH_CHECK_PERIOD", "1m"),
 	}
 }
 

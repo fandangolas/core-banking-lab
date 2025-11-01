@@ -20,24 +20,32 @@ type PostgresRepository struct {
 }
 
 // NewPostgresRepository creates a new PostgreSQL repository with connection pool
-func NewPostgresRepository(connString string) (*PostgresRepository, error) {
+func NewPostgresRepository(cfg *Config) (*PostgresRepository, error) {
 	ctx := context.Background()
 
 	// Parse connection string and create pool config
-	config, err := pgxpool.ParseConfig(connString)
+	poolConfig, err := pgxpool.ParseConfig(cfg.ConnectionString())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
-	// Configure connection pool settings
-	config.MaxConns = 25                      // Maximum open connections
-	config.MinConns = 5                       // Minimum idle connections
-	config.MaxConnLifetime = 30 * time.Minute // Connection lifetime
-	config.MaxConnIdleTime = 5 * time.Minute  // Idle connection timeout
-	config.HealthCheckPeriod = 1 * time.Minute
+	// Configure connection pool settings from config
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = int32(cfg.MaxIdleConns)
+
+	// Parse duration strings
+	if maxLifetime, err := time.ParseDuration(cfg.ConnMaxLifetime); err == nil {
+		poolConfig.MaxConnLifetime = maxLifetime
+	}
+	if maxIdleTime, err := time.ParseDuration(cfg.ConnMaxIdleTime); err == nil {
+		poolConfig.MaxConnIdleTime = maxIdleTime
+	}
+	if healthCheck, err := time.ParseDuration(cfg.HealthCheckPeriod); err == nil {
+		poolConfig.HealthCheckPeriod = healthCheck
+	}
 
 	// Create connection pool
-	pool, err := pgxpool.NewWithConfig(ctx, config)
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
@@ -49,7 +57,7 @@ func NewPostgresRepository(connString string) (*PostgresRepository, error) {
 	}
 
 	log.Printf("PostgreSQL connection pool created successfully (max: %d, min: %d)",
-		config.MaxConns, config.MinConns)
+		poolConfig.MaxConns, poolConfig.MinConns)
 
 	return &PostgresRepository{
 		pool:           pool,

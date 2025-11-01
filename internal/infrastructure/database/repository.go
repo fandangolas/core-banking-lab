@@ -18,9 +18,9 @@ var (
 	Repo Repository
 )
 
-// InitWithConnectionString directly initializes PostgreSQL repository with a connection string (for testing)
-func InitWithConnectionString(connString string) error {
-	repo, err := postgres.NewPostgresRepository(connString)
+// InitWithConfig directly initializes PostgreSQL repository with a config (for testing)
+func InitWithConfig(cfg *postgres.Config) error {
+	repo, err := postgres.NewPostgresRepository(cfg)
 	if err != nil {
 		return err
 	}

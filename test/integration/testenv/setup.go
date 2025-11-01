@@ -24,7 +24,7 @@ func SetupTestRouter() *gin.Engine {
 
 		// Initialize PostgreSQL repository for tests
 		dbConfig := postgres.NewConfigFromEnv()
-		repo, err := postgres.NewPostgresRepository(dbConfig.ConnectionString())
+		repo, err := postgres.NewPostgresRepository(dbConfig)
 		if err != nil {
 			log.Fatalf("Failed to initialize test database: %v", err)
 		}

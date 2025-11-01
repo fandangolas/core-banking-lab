@@ -3,7 +3,6 @@ package postgres_test
 import (
 	"bank-api/internal/infrastructure/database/postgres"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -20,9 +19,9 @@ var (
 // getTestRepository creates or returns a singleton test repository
 func getTestRepository(t *testing.T) *postgres.PostgresRepository {
 	testRepoOnce.Do(func() {
-		connString := getTestConnectionString()
+		cfg := postgres.NewConfigFromEnv()
 
-		repo, err := postgres.NewPostgresRepository(connString)
+		repo, err := postgres.NewPostgresRepository(cfg)
 		require.NoError(t, err, "Failed to create test repository")
 
 		testRepo = repo
@@ -32,28 +31,6 @@ func getTestRepository(t *testing.T) *postgres.PostgresRepository {
 	})
 
 	return testRepo
-}
-
-// getTestConnectionString builds connection string from environment variables
-func getTestConnectionString() string {
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "banking")
-	password := getEnv("DB_PASSWORD", "banking_secure_pass_2024")
-	dbname := getEnv("DB_NAME", "banking")
-	sslmode := getEnv("DB_SSLMODE", "disable")
-
-	return fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		host, port, user, password, dbname, sslmode,
-	)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 // TestCreateAccount tests account creation
