@@ -43,7 +43,6 @@ func CreateAccount(ctx *gin.Context) {
 
 	// Record metrics
 	metrics.RecordAccountCreation()
-	metrics.UpdateActiveAccounts(float64(database.Repo.(*database.InMemory).GetAccountCount()))
 
 	logging.Info("Account created successfully", map[string]interface{}{
 		"account_id": id,
