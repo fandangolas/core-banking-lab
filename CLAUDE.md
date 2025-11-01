@@ -5,15 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Go API (Main Service)
-- **Start the API server**: `go run cmd/api/main.go` (runs on localhost:8080)
-- **Run all tests**: `go test ./...`
+- **Start the API server**: `go run cmd/api/main.go` (requires PostgreSQL, runs on localhost:8080)
+- **Run all tests**: `go test ./...` (requires PostgreSQL running)
 - **Run unit tests**: `go test ./test/unit/...`
-- **Run integration tests**: `go test ./test/integration/...`
+- **Run integration tests**: `go test ./test/integration/...` (requires PostgreSQL)
 - **Run specific test**: `go test ./test/integration/account -run TestTransferSuccess`
 - **Build**: `go build -o bank-api cmd/api/main.go`
 
+### Database Operations
+- **Run PostgreSQL integration tests**: `./test-postgres.sh`
+- **Start PostgreSQL only**: `docker-compose up -d postgres`
+- **View PostgreSQL logs**: `docker-compose logs -f postgres`
+- **Connect to PostgreSQL**: `docker exec -it banking-postgres psql -U banking -d banking`
+- **Reset database**: `docker-compose down && docker-compose up -d postgres`
+
 ### Docker Development
-- **Start full stack**: `docker-compose up --build`
+- **Start full stack**: `docker-compose up --build` (PostgreSQL + API + Monitoring)
+- **Start only PostgreSQL**: `docker-compose up -d postgres`
 - **Build API container**: `docker build -f Dockerfile.api -t bank-api .`
 
 ## Architecture Overview
@@ -32,7 +40,12 @@ internal/
   │   ├── account/             # Core business logic with thread-safe account operations
   │   └── models/              # Data structures (Account, Event models)
   ├── infrastructure/          # External systems integration
-  │   ├── database/            # Repository interface with in-memory and PostgreSQL implementations
+  │   ├── database/            # Repository interface with PostgreSQL implementation
+  │   │   ├── postgres/        # PostgreSQL repository implementation (Phase 2)
+  │   │   │   ├── postgres.go  # Repository implementation with pgx driver
+  │   │   │   ├── config.go    # Database configuration from environment
+  │   │   │   └── migrations/  # Versioned database migrations
+  │   │   └── repository.go    # Repository interface definition
   │   └── events/              # Event broker for real-time updates
   ├── config/                  # Configuration management with environment variable support
   └── pkg/                     # Shared utilities
@@ -49,11 +62,42 @@ test/                          # Test suites
 ### Key Design Patterns
 - **Ordered locking** in transfers to prevent deadlocks (by account ID)
 - **Mutex-protected account operations** for concurrency safety
-- **Repository pattern** with interface for future PostgreSQL migration
+- **Repository pattern** with PostgreSQL backend for persistent storage
 - **Event-driven updates** for real-time dashboard synchronization
 - **Singleton pattern** with `sync.Once` for test environment setup
 - **Dependency injection** with global repository instance for clean architecture
 - **Configuration-based middleware** supporting multiple environments
+
+### Database Implementation (Phase 2)
+
+The application uses **PostgreSQL 16** as its persistent database backend.
+
+#### PostgreSQL Repository
+- Full ACID compliance with SERIALIZABLE isolation support
+- Persistent storage with atomic transactions
+- Connection pooling with pgx/v5 driver (max: 25 connections, min: 5)
+- Automatic schema initialization via Docker Compose
+- Per-account mutex protection for concurrency safety
+
+**Environment Variables:**
+- `DB_HOST` - Database host (default: localhost)
+- `DB_PORT` - Database port (default: 5432)
+- `DB_NAME` - Database name (default: banking)
+- `DB_USER` - Database user (default: banking)
+- `DB_PASSWORD` - Database password (default: banking_secure_pass_2024)
+- `DB_SSLMODE` - SSL mode (default: disable)
+- `DB_MAX_OPEN_CONNS` - Max open connections (default: 25)
+- `DB_MAX_IDLE_CONNS` - Max idle connections (default: 5)
+- `DB_CONN_MAX_LIFETIME` - Connection max lifetime (default: 30m)
+
+**Schema:**
+- `accounts` table: id, owner, balance (DECIMAL 15,2), created_at, updated_at, version
+- `transactions` table: id, account_id, transaction_type, amount, balance_after, reference_id, created_at, metadata
+- Constraints: positive balance, valid transaction types, foreign keys
+- Indexes: account transactions (id + created_at DESC), reference_id for transfer pairs
+- Triggers: automatic updated_at timestamp updates
+
+See [ADR-001](docs/adr/ADR-001-postgresql-database-choice.md) for detailed database architecture decisions.
 
 ## Testing Strategy
 
@@ -67,6 +111,13 @@ test/                          # Test suites
 - Full request/response cycle validation
 - Account state verification across operations
 - Error handling and edge case coverage
+
+### PostgreSQL Repository Tests (`test/integration/postgres/`)
+- Direct repository testing against PostgreSQL database
+- Requires PostgreSQL to be running (use `./test-postgres.sh`)
+- Tests account creation, updates, concurrency, balance precision
+- Automatic database reset after each test
+- Run with: `DB_HOST=localhost DB_PASSWORD=banking_secure_pass_2024 go test ./test/integration/postgres -v`
 
 ### Test Utilities (`test/integration/testenv/`)
 - Helper functions for setting up test router
