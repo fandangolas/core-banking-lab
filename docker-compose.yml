@@ -1,20 +1,99 @@
 services:
+  # PostgreSQL Database (Primary - Master Node)
+  postgres:
+    image: postgres:16-alpine
+    container_name: banking-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: banking
+      POSTGRES_USER: banking
+      POSTGRES_PASSWORD: banking_secure_pass_2024
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      # Performance tuning
+      POSTGRES_MAX_CONNECTIONS: 100
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deployments/docker-compose/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking -d banking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=2621kB"
+      - "-c"
+      - "min_wal_size=1GB"
+      - "-c"
+      - "max_wal_size=4GB"
+      - "-c"
+      - "fsync=on"
+      - "-c"
+      - "synchronous_commit=on"
+      - "-c"
+      - "log_destination=stderr"
+      - "-c"
+      - "logging_collector=off"
+      - "-c"
+      - "log_min_duration_statement=1000"
+
+  # Banking API
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
+    container_name: banking-api
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      - RATE_LIMIT_REQUESTS_PER_MINUTE=2000
-  dashboard:
-    build:
-      context: ./dev/dashboard
-      dockerfile: Dockerfile
-    ports:
-      - "5173:5173"
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: banking
+      DB_USER: banking
+      DB_PASSWORD: banking_secure_pass_2024
+      DB_SSLMODE: disable
+      DB_MAX_OPEN_CONNS: 25
+      DB_MAX_IDLE_CONNS: 5
+      DB_CONN_MAX_LIFETIME: 30m
+      # Application configuration
+      RATE_LIMIT_REQUESTS_PER_MINUTE: 2000
+      SERVER_PORT: 8080
+      LOG_LEVEL: info
     depends_on:
-      - api
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -47,5 +126,14 @@ services:
       - prometheus
 
 volumes:
+  postgres_data:
+    driver: local
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
+
+networks:
+  default:
+    name: banking-network
+    driver: bridge
