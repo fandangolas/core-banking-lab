@@ -5,38 +5,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Go API (Main Service)
-- **Start the API server**: `go run src/main.go` (runs on localhost:8080)
+- **Start the API server**: `go run cmd/api/main.go` (runs on localhost:8080)
 - **Run all tests**: `go test ./...`
-- **Run unit tests**: `go test ./tests/unit/...`
-- **Run integration tests**: `go test ./tests/integration/...`
-- **Run specific test**: `go test ./tests/integration/account -run TestTransferSuccess`
-- **Build**: `go build -o bank-api src/main.go`
-
-### React Dashboard
-- **Start dashboard dev server**: `cd dev/dashboard && npm run dev` (runs on localhost:5173)
-- **Build dashboard**: `cd dev/dashboard && npm run build`
-- **Dashboard dependencies**: `cd dev/dashboard && npm install`
+- **Run unit tests**: `go test ./test/unit/...`
+- **Run integration tests**: `go test ./test/integration/...`
+- **Run specific test**: `go test ./test/integration/account -run TestTransferSuccess`
+- **Build**: `go build -o bank-api cmd/api/main.go`
 
 ### Docker Development
 - **Start full stack**: `docker-compose up --build`
 - **Build API container**: `docker build -f Dockerfile.api -t bank-api .`
-- **Build dashboard container**: `cd dev/dashboard && docker build -t dashboard .`
 
 ## Architecture Overview
 
-This project implements a **Diplomat Architecture** (variant of Ports and Adapters), focusing on concurrent banking operations with thread-safe account management.
+This project follows the **golang-standards/project-layout**, focusing on concurrent banking operations with thread-safe account management.
 
-### Core Structure
-- **`src/domain/`**: Core business logic with thread-safe account operations
-- **`src/models/`**: Data structures (Account, Event models)
-- **`src/handlers/`**: HTTP request handlers using Gin framework
-- **`src/config/`**: Configuration management with environment variable support
-- **`src/diplomat/`**: External adapters and infrastructure
-  - `database/`: Repository interface with in-memory implementation
-  - `middleware/`: HTTP middleware (CORS, Prometheus metrics)
-  - `routes/`: Route registration and configuration
-  - `events/`: Event broker for real-time updates
-- **`src/metrics/`**: Application metrics collection with Prometheus integration
+### Project Structure (Post Phase 1 Refactoring)
+```
+cmd/api/                       # Application entry point
+internal/
+  ├── api/                     # HTTP layer
+  │   ├── handlers/            # HTTP request handlers using Gin framework
+  │   ├── middleware/          # HTTP middleware (CORS, Prometheus metrics, rate limiting)
+  │   └── routes/              # Route registration and configuration
+  ├── domain/                  # Business logic
+  │   ├── account/             # Core business logic with thread-safe account operations
+  │   └── models/              # Data structures (Account, Event models)
+  ├── infrastructure/          # External systems integration
+  │   ├── database/            # Repository interface with in-memory and PostgreSQL implementations
+  │   └── events/              # Event broker for real-time updates
+  ├── config/                  # Configuration management with environment variable support
+  └── pkg/                     # Shared utilities
+      ├── components/          # Dependency injection container
+      ├── errors/              # Custom error types
+      ├── logging/             # Structured logging
+      ├── telemetry/           # Application metrics (Prometheus integration)
+      └── validation/          # Input validation
+test/                          # Test suites
+  ├── integration/             # HTTP endpoint tests
+  └── unit/                    # Domain logic tests
+```
 
 ### Key Design Patterns
 - **Ordered locking** in transfers to prevent deadlocks (by account ID)
@@ -49,18 +57,18 @@ This project implements a **Diplomat Architecture** (variant of Ports and Adapte
 
 ## Testing Strategy
 
-### Unit Tests (`tests/unit/`)
+### Unit Tests (`test/unit/`)
 - Focus on domain logic testing with concurrent scenarios
 - Use `github.com/stretchr/testify` for assertions
 - Test concurrency safety with goroutines and WaitGroups
 
-### Integration Tests (`tests/integration/`)
+### Integration Tests (`test/integration/`)
 - HTTP endpoint testing using `httptest` package
 - Full request/response cycle validation
 - Account state verification across operations
 - Error handling and edge case coverage
 
-### Test Utilities (`tests/integration/testenv/`)
+### Test Utilities (`test/integration/testenv/`)
 - Helper functions for setting up test router
 - Account creation and balance checking utilities
 - Database reset between tests
@@ -137,3 +145,21 @@ Enhanced GitHub Actions workflow with comprehensive quality checks:
 - Configuration is loaded once at startup - restart service after environment changes
 - Prometheus metrics are automatically collected for all HTTP endpoints
 - Use the test environment singleton pattern for consistent test setup
+
+## Refactoring Status
+
+### ✅ Phase 1: Folder Restructuring (COMPLETED)
+- Reorganized codebase to follow golang-standards/project-layout
+- Moved all files from `src/` to `cmd/`, `internal/`, and `test/`
+- Updated all import paths across 42 files
+- All 43 tests passing with zero functionality changes
+- Branch: `refactor/phase-1-folder-structure`
+
+### 🔄 Next Phases (Planned)
+See [REFACTORING_PLAN.md](REFACTORING_PLAN.md) for detailed refactoring roadmap:
+- Phase 2: PostgreSQL Integration
+- Phase 3: Kafka Integration (producers for audit/replay)
+- Phase 4: PLG Stack (Prometheus + Loki + Grafana)
+- Phase 5: k6 Load Testing
+- Phase 6: Enhanced Docker Compose
+- Phase 7: Kubernetes with Helm

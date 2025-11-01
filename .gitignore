@@ -40,3 +40,6 @@ node_modules/
 .terraform/
 .terraform.lock.hcl
 terraform.tfvars
+
+# Claude Code documentation (project-specific AI instructions)
+CLAUDE.md

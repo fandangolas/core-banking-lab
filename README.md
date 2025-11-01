@@ -22,17 +22,25 @@ Implements **fine-grained locking strategy** with per-account mutexes for all ba
 **Performance Results**: Successfully processed 100+ concurrent operations with **zero data races**, **zero deadlocks**, and **error rate < 0.001%**. Future benchmarking planned to measure peak throughput under production load conditions.
 
 ### 🏗️ **Clean Architecture**
-Implements **Diplomat pattern** with clear separation of concerns:
+Follows **golang-standards/project-layout** with clear separation of concerns:
 
-- **Domain Layer**: Pure business logic (transfers, validations) with 100% test coverage
-- **Application Layer (Handlers)**: Orchestrates domain operations and coordinates data flow  
-- **Diplomat Layer**: Manages all external I/O (database, HTTP, events)
-- **Data Adapters**: Transform models between internal domain and external systems
+```
+cmd/api/              # Application entry point
+internal/
+  ├── api/            # HTTP layer (handlers, middleware, routes)
+  ├── domain/         # Business logic (account operations, models)
+  ├── infrastructure/ # External systems (database, events)
+  ├── config/         # Configuration management
+  └── pkg/            # Shared utilities (errors, logging, telemetry)
+test/                 # Test suites (integration, unit)
+```
+
+- **Domain Layer**: Pure business logic isolated from infrastructure
+- **API Layer**: HTTP handlers and middleware
+- **Infrastructure Layer**: Database and event broker adapters
+- **Shared Utilities**: Reusable components across layers
 
 This ensures the core banking logic remains isolated, testable, and independent of external dependencies.
-
-### ⚡ **Real-Time Dashboard** 
-React dashboard with live updates via WebSocket events showing transactions as they happen.
 
 ## Quick Start
 
@@ -40,13 +48,13 @@ React dashboard with live updates via WebSocket events showing transactions as t
 # Run the API
 git clone https://github.com/fandangolas/core-banking-lab.git
 cd core-banking-lab
-go run src/main.go
+go run cmd/api/main.go
 
 # Or full stack with Docker
 docker-compose up --build
 ```
 
-**API**: http://localhost:8080 • **Dashboard**: http://localhost:5173
+**API**: http://localhost:8080
 
 ## API Example
 
@@ -67,28 +75,28 @@ curl -X POST http://localhost:8080/accounts/transfer \
 
 ```bash
 # Run all tests
-go test ./tests/...
+go test ./...
 
 # Run unit tests only
-go test ./tests/unit/...
+go test ./test/unit/...
 
-# Run integration tests only  
-go test ./tests/integration/...
+# Run integration tests only
+go test ./test/integration/...
 
 # Test for race conditions
-go test -race ./tests/...
+go test -race ./...
 
 # Test specific concurrent scenario
-go test ./tests/integration/account -run TestConcurrentTransfer
+go test ./test/integration/account -run TestConcurrentTransfer
 ```
 
-**Test Coverage**: 16 integration tests covering concurrent operations, error handling, and edge cases.
+**Test Coverage**: 43 tests passing covering concurrent operations, error handling, and edge cases.
 
 ## Stack
 
-- **Backend**: Go + Gin + Structured Logging
-- **Frontend**: React + Vite + WebSocket
-- **Infrastructure**: Docker + Docker Compose
+- **Backend**: Go 1.23 + Gin + Structured Logging
+- **Monitoring**: Prometheus + Grafana
+- **Infrastructure**: Docker + Docker Compose + Kubernetes
 - **Testing**: Testify + httptest + Concurrent scenarios
 
 ## Documentation
