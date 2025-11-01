@@ -31,6 +31,11 @@ func TestCreateAccount(t *testing.T) {
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
 	assert.Equal(t, "Alice", result["owner"])
 	assert.NotZero(t, result["id"])
+
+	// Verify account was persisted in database by retrieving balance via GET
+	accountID := int(result["id"].(float64))
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 0, balance, "New account should have zero balance")
 }
 
 func TestCreateAccountInvalid(t *testing.T) {

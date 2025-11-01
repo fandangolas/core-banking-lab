@@ -62,4 +62,8 @@ func TestTransferNonexistentAccount(t *testing.T) {
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
 	testenv.AssertHasError(t, result)
+
+	// Verify source account balance unchanged in database after failed transfer
+	balance := testenv.GetBalance(t, router, from)
+	assert.Equal(t, 100, balance, "Source account balance should remain unchanged after failed transfer")
 }

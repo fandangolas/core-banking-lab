@@ -83,6 +83,10 @@ func TestWithdrawInsufficientBalance(t *testing.T) {
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
 	testenv.AssertHasError(t, result)
+
+	// Verify balance unchanged in database after failed withdrawal
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 100, balance, "Balance should remain unchanged after failed withdrawal")
 }
 
 func TestWithdrawNonexistentAccount(t *testing.T) {
