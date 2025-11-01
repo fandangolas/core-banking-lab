@@ -3,8 +3,6 @@ package database
 import (
 	"bank-api/internal/domain/models"
 	"bank-api/internal/infrastructure/database/postgres"
-	"log"
-	"sync"
 )
 
 // Repository defines the required methods for persisting accounts.
@@ -16,24 +14,9 @@ type Repository interface {
 }
 
 var (
-	Repo     Repository
-	initOnce sync.Once
+	// Repo is the global repository instance, initialized by the components layer
+	Repo Repository
 )
-
-// Init initializes the PostgreSQL repository.
-// Uses sync.Once to ensure it's only initialized once (singleton pattern).
-func Init() {
-	initOnce.Do(func() {
-		log.Println("Initializing PostgreSQL repository...")
-		config := postgres.NewConfigFromEnv()
-		repo, err := postgres.NewPostgresRepository(config.ConnectionString())
-		if err != nil {
-			log.Fatalf("Failed to initialize PostgreSQL repository: %v", err)
-		}
-		Repo = repo
-		log.Println("PostgreSQL repository initialized successfully")
-	})
-}
 
 // InitWithConnectionString directly initializes PostgreSQL repository with a connection string (for testing)
 func InitWithConnectionString(connString string) error {

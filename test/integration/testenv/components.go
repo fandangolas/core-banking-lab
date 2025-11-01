@@ -3,8 +3,10 @@ package testenv
 import (
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
+	"bank-api/internal/infrastructure/database/postgres"
 	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/pkg/logging"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,9 +48,14 @@ func NewTestContainer() *TestContainer {
 	// Initialize logging in test mode
 	logging.Init(cfg)
 
-	// Initialize database
-	database.Init()
-	db := database.Repo
+	// Initialize PostgreSQL repository for tests
+	dbConfig := postgres.NewConfigFromEnv()
+	repo, err := postgres.NewPostgresRepository(dbConfig.ConnectionString())
+	if err != nil {
+		log.Fatalf("Failed to initialize test database: %v", err)
+	}
+	database.Repo = repo
+	db := repo
 
 	// Get the singleton event broker
 	eventBroker := events.GetBroker()
