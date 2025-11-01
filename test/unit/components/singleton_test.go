@@ -1,9 +1,9 @@
 package components
 
 import (
-	"bank-api/internal/pkg/components"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/pkg/components"
 	"sync"
 	"testing"
 

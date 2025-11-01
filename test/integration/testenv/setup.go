@@ -1,10 +1,10 @@
 package testenv
 
 import (
-	"bank-api/internal/config"
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/api/middleware"
 	"bank-api/internal/api/routes"
+	"bank-api/internal/config"
+	"bank-api/internal/infrastructure/database"
 	"sync"
 
 	"github.com/gin-gonic/gin"

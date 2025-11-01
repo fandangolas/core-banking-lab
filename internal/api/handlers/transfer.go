@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"bank-api/internal/domain/models"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
-	"bank-api/internal/domain/models"
 	"bank-api/internal/pkg/validation"
 	"net/http"
 	"time"

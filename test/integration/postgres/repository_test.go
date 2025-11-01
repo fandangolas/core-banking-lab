@@ -242,8 +242,8 @@ func TestMultipleAccounts(t *testing.T) {
 		owner   string
 		balance int
 	}{
-		{"Alice", 100000},  // $1,000.00
-		{"Bob", 50000},     // $500.00
+		{"Alice", 100000},   // $1,000.00
+		{"Bob", 50000},      // $500.00
 		{"Charlie", 200000}, // $2,000.00
 	}
 

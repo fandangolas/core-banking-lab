@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/domain/account"
+	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"

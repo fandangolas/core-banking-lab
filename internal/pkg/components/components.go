@@ -1,11 +1,11 @@
 package components
 
 import (
+	"bank-api/internal/api/middleware"
+	"bank-api/internal/api/routes"
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
-	"bank-api/internal/api/middleware"
-	"bank-api/internal/api/routes"
 	"bank-api/internal/pkg/logging"
 	"context"
 	"fmt"

@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"bank-api/internal/api/middleware"
 	"bank-api/internal/api/handlers"
+	"bank-api/internal/api/middleware"
 
 	"github.com/gin-gonic/gin"
 )

@@ -233,12 +233,12 @@ func (r *PostgresRepository) GetTransactionHistory(accountID int, limit int) ([]
 
 	for rows.Next() {
 		var (
-			id              int
-			txType          string
-			amount          float64
-			balanceAfter    float64
-			referenceID     *string
-			createdAt       time.Time
+			id           int
+			txType       string
+			amount       float64
+			balanceAfter float64
+			referenceID  *string
+			createdAt    time.Time
 		)
 
 		err := rows.Scan(&id, &txType, &amount, &balanceAfter, &referenceID, &createdAt)
