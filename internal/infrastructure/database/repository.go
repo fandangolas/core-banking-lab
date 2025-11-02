@@ -2,7 +2,7 @@ package database
 
 import (
 	"bank-api/internal/domain/models"
-	"sync"
+	"bank-api/internal/infrastructure/database/postgres"
 )
 
 // Repository defines the required methods for persisting accounts.
@@ -11,17 +11,23 @@ type Repository interface {
 	GetAccount(id int) (*models.Account, bool)
 	UpdateAccount(acc *models.Account)
 	Reset()
+
+	// Atomic operations for concurrency safety
+	AtomicWithdraw(accountID int, amount int) (*models.Account, error)
+	AtomicTransfer(fromID int, toID int, amount int) (*models.Account, *models.Account, error)
 }
 
 var (
-	Repo     Repository
-	initOnce sync.Once
+	// Repo is the global repository instance, initialized by the components layer
+	Repo Repository
 )
 
-// Init initializes the repository with an in-memory implementation.
-// Uses sync.Once to ensure it's only initialized once (singleton pattern).
-func Init() {
-	initOnce.Do(func() {
-		Repo = NewInMemory()
-	})
+// InitWithConfig directly initializes PostgreSQL repository with a config (for testing)
+func InitWithConfig(cfg *postgres.Config) error {
+	repo, err := postgres.NewPostgresRepository(cfg)
+	if err != nil {
+		return err
+	}
+	Repo = repo
+	return nil
 }

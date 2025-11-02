@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/domain/account"
+	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -43,7 +43,6 @@ func CreateAccount(ctx *gin.Context) {
 
 	// Record metrics
 	metrics.RecordAccountCreation()
-	metrics.UpdateActiveAccounts(float64(database.Repo.(*database.InMemory).GetAccountCount()))
 
 	logging.Info("Account created successfully", map[string]interface{}{
 		"account_id": id,

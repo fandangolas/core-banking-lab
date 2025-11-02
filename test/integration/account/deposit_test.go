@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -15,8 +14,8 @@ import (
 )
 
 func TestSimpleDeposit(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nicolas")
 
@@ -41,8 +40,8 @@ func TestSimpleDeposit(t *testing.T) {
 }
 
 func TestDepositInvalidAmount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nicolas")
 
@@ -62,8 +61,8 @@ func TestDepositInvalidAmount(t *testing.T) {
 }
 
 func TestDepositNonexistentAccount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	body := map[string]int{"amount": 100}
 	jsonBody, _ := json.Marshal(body)

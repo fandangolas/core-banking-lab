@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -16,8 +15,8 @@ import (
 )
 
 func TestWithdraw(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
 	testenv.Deposit(t, router, accountID, 5000)
@@ -42,8 +41,8 @@ func TestWithdraw(t *testing.T) {
 }
 
 func TestWithdrawInvalidAmount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
 	testenv.Deposit(t, router, accountID, 500)
@@ -64,8 +63,8 @@ func TestWithdrawInvalidAmount(t *testing.T) {
 }
 
 func TestWithdrawInsufficientBalance(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
 	testenv.Deposit(t, router, accountID, 100)
@@ -83,11 +82,15 @@ func TestWithdrawInsufficientBalance(t *testing.T) {
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
 	testenv.AssertHasError(t, result)
+
+	// Verify balance unchanged in database after failed withdrawal
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 100, balance, "Balance should remain unchanged after failed withdrawal")
 }
 
 func TestWithdrawNonexistentAccount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	body := map[string]int{"amount": 100}
 	jsonBody, _ := json.Marshal(body)
@@ -105,8 +108,8 @@ func TestWithdrawNonexistentAccount(t *testing.T) {
 }
 
 func TestConcurrentWithdraw(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "ConcurrentWithdraw")
 	testenv.Deposit(t, router, accountID, 10000) // R$ 100,00

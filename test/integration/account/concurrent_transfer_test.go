@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -14,8 +13,8 @@ import (
 )
 
 func TestConcurrentTransfer(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	fromID := testenv.CreateAccount(t, router, "Fonte")
 	toID := testenv.CreateAccount(t, router, "Destino")

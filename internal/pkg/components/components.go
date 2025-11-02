@@ -1,11 +1,12 @@
 package components
 
 import (
-	"bank-api/internal/config"
-	"bank-api/internal/infrastructure/database"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/api/middleware"
 	"bank-api/internal/api/routes"
+	"bank-api/internal/config"
+	"bank-api/internal/infrastructure/database"
+	"bank-api/internal/infrastructure/database/postgres"
+	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/pkg/logging"
 	"context"
 	"fmt"
@@ -102,11 +103,24 @@ func (c *Container) initLogger() error {
 
 // initDatabase sets up the database connection
 func (c *Container) initDatabase() error {
-	database.Init()
-	c.Database = database.Repo
+	// Load database configuration from environment
+	dbConfig := postgres.NewConfigFromEnv()
+
+	// Initialize PostgreSQL repository with configuration
+	repo, err := postgres.NewPostgresRepository(dbConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create PostgreSQL repository: %w", err)
+	}
+
+	// Set the global repository instance
+	database.Repo = repo
+	c.Database = repo
 
 	logging.Info("Database initialized", map[string]interface{}{
-		"type": "in-memory",
+		"type":     "postgresql",
+		"host":     dbConfig.Host,
+		"port":     dbConfig.Port,
+		"database": dbConfig.Database,
 	})
 	return nil
 }

@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -14,8 +13,8 @@ import (
 )
 
 func TestCreateAccount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	body := map[string]string{"owner": "Alice"}
 	jsonBody, _ := json.Marshal(body)
@@ -31,11 +30,16 @@ func TestCreateAccount(t *testing.T) {
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
 	assert.Equal(t, "Alice", result["owner"])
 	assert.NotZero(t, result["id"])
+
+	// Verify account was persisted in database by retrieving balance via GET
+	accountID := int(result["id"].(float64))
+	balance := testenv.GetBalance(t, router, accountID)
+	assert.Equal(t, 0, balance, "New account should have zero balance")
 }
 
 func TestCreateAccountInvalid(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	body := map[string]string{"owner": ""}
 	jsonBody, _ := json.Marshal(body)
