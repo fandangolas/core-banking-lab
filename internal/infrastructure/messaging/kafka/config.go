@@ -30,7 +30,7 @@ func NewConfigFromEnv() *Config {
 		ClientID:          getEnv("KAFKA_CLIENT_ID", "banking-api"),
 		EnableIdempotence: getEnvBool("KAFKA_ENABLE_IDEMPOTENCE", true),
 		CompressionType:   getEnv("KAFKA_COMPRESSION_TYPE", "snappy"),
-		RequiredAcks:      getEnv("KAFKA_REQUIRED_ACKS", "all"),
+		RequiredAcks:      getEnv("KAFKA_REQUIRED_ACKS", "1"), // Wait for leader only (changed from "all")
 		MaxRetries:        getEnvInt("KAFKA_MAX_RETRIES", 5),
 		RetryBackoff:      getEnvDuration("KAFKA_RETRY_BACKOFF", 100*time.Millisecond),
 	}
