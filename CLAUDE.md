@@ -52,7 +52,15 @@ internal/
   │   │   │   ├── config.go    # Database configuration from environment
   │   │   │   └── migrations/  # Versioned database migrations
   │   │   └── repository.go    # Repository interface definition
-  │   └── events/              # Event broker for real-time updates
+  │   ├── events/              # Event broker for real-time updates (legacy)
+  │   └── messaging/           # Kafka event streaming (Phase 3)
+  │       ├── kafka/           # Kafka producer infrastructure
+  │       │   ├── config.go    # Kafka configuration from environment
+  │       │   ├── producer.go  # Thread-safe Kafka producer wrapper
+  │       │   └── topics.go    # Topic name constants
+  │       ├── events.go        # Event schema definitions
+  │       ├── publisher.go     # EventPublisher interface and implementations
+  │       └── event_capture.go # In-memory event capture for testing
   ├── config/                  # Configuration management with environment variable support
   └── pkg/                     # Shared utilities
       ├── components/          # Dependency injection container
@@ -104,6 +112,102 @@ The application uses **PostgreSQL 16** as its persistent database backend.
 - Triggers: automatic updated_at timestamp updates
 
 See [ADR-001](docs/adr/ADR-001-postgresql-database-choice.md) for detailed database architecture decisions.
+
+### Event Streaming (Phase 3 - Kafka)
+
+The application publishes banking events to **Apache Kafka** for audit logging and event replay capabilities.
+
+#### Kafka Configuration (KRaft Mode)
+- Uses Kafka 7.6.0 with **KRaft** (no ZooKeeper dependency)
+- Runs on `localhost:9092` (Docker), `kafka:9092` (container network)
+- Auto-creates topics with 3 partitions, replication factor 1
+- 30-day retention policy for audit compliance
+- Snappy compression for performance
+
+**Environment Variables:**
+- `KAFKA_ENABLED` - Enable/disable Kafka (default: true, set to "false" for tests)
+- `KAFKA_BROKERS` - Comma-separated broker list (default: localhost:9092)
+- `KAFKA_CLIENT_ID` - Producer client ID (default: banking-api)
+- `KAFKA_ENABLE_IDEMPOTENCE` - Enable idempotent producer (default: true)
+- `KAFKA_COMPRESSION_TYPE` - Message compression (default: snappy)
+- `KAFKA_REQUIRED_ACKS` - Acknowledgment level (default: all)
+
+#### Event Topics and Schemas
+
+**banking.accounts.created**
+```json
+{
+  "account_id": 123,
+  "owner": "John Doe",
+  "timestamp": "2025-11-02T04:02:45.299838464Z"
+}
+```
+
+**banking.transactions.deposit**
+```json
+{
+  "account_id": 123,
+  "amount": 1000,
+  "balance_after": 5000,
+  "timestamp": "2025-11-02T04:02:45.734718589Z"
+}
+```
+
+**banking.transactions.withdrawal**
+```json
+{
+  "account_id": 123,
+  "amount": 500,
+  "balance_after": 4500,
+  "timestamp": "2025-11-02T04:02:46.123456789Z"
+}
+```
+
+**banking.transactions.transfer**
+```json
+{
+  "from_account_id": 123,
+  "to_account_id": 456,
+  "amount": 1200,
+  "from_balance_after": 3300,
+  "to_balance_after": 1200,
+  "timestamp": "2025-11-02T04:02:47.987654321Z"
+}
+```
+
+#### Graceful Degradation
+- If Kafka initialization fails, the application falls back to `NoOpEventPublisher`
+- Banking operations continue to work without Kafka
+- Kafka failures are logged but do not interrupt service
+
+#### Testing with EventCapture
+Integration tests use `EventCapture` (in-memory event publisher) instead of Kafka:
+- No external Kafka dependency needed for tests
+- Thread-safe event collection with `sync.RWMutex`
+- Provides getter methods for all event types
+- Reset capability for test isolation
+
+Example test usage:
+```go
+container := testenv.NewTestContainer()
+defer container.Reset()
+
+router := container.GetRouter()
+eventPublisher := container.GetEventPublisher()
+
+// Make deposit
+testenv.Deposit(t, router, accountID, 1000)
+
+// Verify event was captured
+events := eventPublisher.GetDepositCompletedEvents()
+assert.Len(t, events, 1)
+assert.Equal(t, 1000, events[0].Amount)
+```
+
+#### Kafka UI and Monitoring
+- Access Kafka UI at http://localhost:8090 when running docker-compose
+- View topics, messages, consumer groups, and cluster health
+- Useful for debugging and monitoring event streams
 
 ## Testing Strategy
 
@@ -212,10 +316,23 @@ Enhanced GitHub Actions workflow with comprehensive quality checks:
 - All 43 tests passing with zero functionality changes
 - Branch: `refactor/phase-1-folder-structure`
 
+### ✅ Phase 2: PostgreSQL Integration (COMPLETED)
+- Migrated from in-memory to PostgreSQL 16 persistent storage
+- Implemented connection pooling with pgx/v5 driver
+- Added database migrations and schema versioning
+- Maintained full test coverage with testcontainers
+- Branch: `refactor/phase-2-postgresql`
+
+### ✅ Phase 3: Kafka Integration (COMPLETED)
+- Integrated Apache Kafka 7.6.0 with KRaft mode (no ZooKeeper)
+- Implemented event publishers for all banking operations
+- Created EventCapture for in-memory testing without Kafka dependency
+- Added comprehensive integration tests for event verification
+- Configured graceful degradation with NoOpEventPublisher fallback
+- Branch: `refactor/phase-3-kafka`
+
 ### 🔄 Next Phases (Planned)
 See [REFACTORING_PLAN.md](REFACTORING_PLAN.md) for detailed refactoring roadmap:
-- Phase 2: PostgreSQL Integration
-- Phase 3: Kafka Integration (producers for audit/replay)
 - Phase 4: PLG Stack (Prometheus + Loki + Grafana)
 - Phase 5: k6 Load Testing
 - Phase 6: Enhanced Docker Compose

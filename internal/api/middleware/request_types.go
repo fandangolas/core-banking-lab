@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"bank-api/internal/infrastructure/database"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/pkg/logging"
 	"context"
 	"time"
@@ -24,9 +23,8 @@ type RequestContext struct {
 	cancelFunc context.CancelFunc // Store cancel function for cleanup
 
 	// Request-scoped services (these reference the singletons)
-	Database    database.Repository
-	EventBroker *events.Broker
-	Logger      RequestLogger
+	Database database.Repository
+	Logger   RequestLogger
 }
 
 // RequestLogger provides request-scoped logging with automatic field injection
@@ -53,8 +51,7 @@ func NewRequestContext(ginCtx *gin.Context) *RequestContext {
 		cancelFunc: cancel,
 
 		// Reference the singleton services
-		Database:    database.Repo,
-		EventBroker: events.GetBroker(),
+		Database: database.Repo,
 		Logger: RequestLogger{
 			requestID: requestID,
 			userIP:    ginCtx.ClientIP(),

@@ -18,7 +18,7 @@ func TestTransferSuccess(t *testing.T) {
 
 	from := testenv.CreateAccount(t, router, "From")
 	to := testenv.CreateAccount(t, router, "To")
-	testenv.Deposit(t, router, from, 1000)
+	testenv.SetBalance(t, from, 1000)
 
 	body := map[string]int{"from": from, "to": to, "amount": 300}
 	jsonBody, _ := json.Marshal(body)
@@ -46,7 +46,7 @@ func TestTransferNonexistentAccount(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	from := testenv.CreateAccount(t, router, "From")
-	testenv.Deposit(t, router, from, 100)
+	testenv.SetBalance(t, from, 100)
 
 	body := map[string]int{"from": from, "to": 999, "amount": 50}
 	jsonBody, _ := json.Marshal(body)

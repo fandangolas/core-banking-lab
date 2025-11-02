@@ -3,12 +3,28 @@ package postgres
 import (
 	"bank-api/internal/domain/models"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	// ErrDuplicateOperation indicates that an operation with the same idempotency key
+	// has already been processed. This is NOT an error - it's expected with at-least-once
+	// delivery semantics. The consumer should skip processing and continue.
+	ErrDuplicateOperation = errors.New("operation already processed (idempotent)")
+
+	// ErrInsufficientFunds indicates that an account doesn't have enough balance
+	// to complete a withdrawal or transfer operation.
+	ErrInsufficientFunds = errors.New("insufficient funds")
+
+	// ErrAccountNotFound indicates that an account with the given ID doesn't exist.
+	ErrAccountNotFound = errors.New("account not found")
 )
 
 // PostgresRepository implements the Repository interface using PostgreSQL
@@ -179,9 +195,10 @@ func (r *PostgresRepository) Reset() {
 	r.accountMutexes = make(map[int]*sync.Mutex)
 	r.mu.Unlock()
 
-	// Truncate tables in correct order (transactions first due to foreign key)
+	// Truncate tables in correct order (transactions and processed_operations first due to foreign keys)
 	queries := []string{
 		"TRUNCATE TABLE transactions RESTART IDENTITY CASCADE",
+		"TRUNCATE TABLE processed_operations RESTART IDENTITY CASCADE",
 		"TRUNCATE TABLE accounts RESTART IDENTITY CASCADE",
 	}
 
@@ -448,4 +465,117 @@ func (r *PostgresRepository) AtomicTransfer(fromID int, toID int, amount int) (*
 	log.Printf("Atomic transfer: From=%d, To=%d, Amount=%.2f", fromID, toID, float64(amount)/100)
 
 	return fromAccount, toAccount, nil
+}
+
+// AtomicDepositWithIdempotency performs an atomic deposit operation with idempotency check.
+// This ensures that:
+// 1. Duplicate messages with the same idempotency key are not processed twice
+// 2. The deposit and idempotency record are inserted atomically (all-or-nothing)
+// 3. Returns ErrDuplicateOperation if the idempotency key already exists
+//
+// This is the key method that makes the consumer idempotent!
+func (r *PostgresRepository) AtomicDepositWithIdempotency(accountID int, amount int, idempotencyKey string) (*models.Account, error) {
+	ctx := context.Background()
+
+	// Start transaction
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Step 1: Check if operation already processed (idempotency check)
+	checkQuery := `
+		SELECT result_balance
+		FROM processed_operations
+		WHERE idempotency_key = $1
+	`
+
+	var resultBalance float64
+	err = tx.QueryRow(ctx, checkQuery, idempotencyKey).Scan(&resultBalance)
+
+	if err == nil {
+		// Already processed! Return existing result (idempotent)
+		log.Printf("Duplicate operation detected: idempotency_key=%s (skipping)", idempotencyKey)
+		return &models.Account{
+			Id:      accountID,
+			Balance: int(resultBalance * 100), // Convert DECIMAL to cents
+		}, ErrDuplicateOperation
+	}
+
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to check idempotency: %w", err)
+	}
+
+	// Step 2: Operation not yet processed - lock account and perform deposit
+	lockQuery := `
+		SELECT id, owner, balance, created_at
+		FROM accounts
+		WHERE id = $1
+		FOR UPDATE
+	`
+
+	var account models.Account
+	var balanceDecimal float64
+
+	err = tx.QueryRow(ctx, lockQuery, accountID).Scan(
+		&account.Id,
+		&account.Owner,
+		&balanceDecimal,
+		&account.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, ErrAccountNotFound
+	}
+
+	// Convert balance from DECIMAL to cents
+	account.Balance = int(balanceDecimal * 100)
+
+	// Step 3: Update account balance
+	newBalance := account.Balance + amount
+	newBalanceDecimal := float64(newBalance) / 100.0
+
+	updateQuery := `
+		UPDATE accounts
+		SET balance = $1, version = version + 1
+		WHERE id = $2
+	`
+
+	_, err = tx.Exec(ctx, updateQuery, newBalanceDecimal, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update balance: %w", err)
+	}
+
+	// Step 4: Record operation as processed (atomic with deposit)
+	insertQuery := `
+		INSERT INTO processed_operations
+		(idempotency_key, operation_type, account_id, amount, result_balance)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+	amountDecimal := float64(amount) / 100.0
+
+	_, err = tx.Exec(ctx, insertQuery,
+		idempotencyKey,
+		"deposit",
+		accountID,
+		amountDecimal,
+		newBalanceDecimal,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to record operation: %w", err)
+	}
+
+	// Step 5: Commit transaction (all-or-nothing)
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	account.Balance = newBalance
+	log.Printf("Atomic deposit with idempotency: ID=%d, Amount=%.2f, NewBalance=%.2f, Key=%s",
+		accountID, amountDecimal, newBalanceDecimal, idempotencyKey)
+
+	return &account, nil
 }

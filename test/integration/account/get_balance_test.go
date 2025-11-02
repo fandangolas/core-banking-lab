@@ -16,7 +16,7 @@ func TestGetBalance(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "Nico")
-	testenv.Deposit(t, router, accountID, 7500)
+	testenv.SetBalance(t, accountID, 7500)
 
 	balance := testenv.GetBalance(t, router, accountID)
 	assert.Equal(t, 7500, balance)

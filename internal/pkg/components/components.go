@@ -6,7 +6,8 @@ import (
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/database/postgres"
-	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/infrastructure/messaging"
+	"bank-api/internal/infrastructure/messaging/kafka"
 	"bank-api/internal/pkg/logging"
 	"context"
 	"fmt"
@@ -22,12 +23,12 @@ import (
 
 // Container holds all application components and their dependencies
 type Container struct {
-	Config      *config.Config
-	Logger      *logging.Logger
-	Database    database.Repository
-	EventBroker *events.Broker
-	Router      *gin.Engine
-	Server      *http.Server
+	Config         *config.Config
+	Logger         *logging.Logger
+	Database       database.Repository
+	EventPublisher messaging.EventPublisher
+	Router         *gin.Engine
+	Server         *http.Server
 }
 
 var (
@@ -70,9 +71,9 @@ func newContainer() (*Container, error) {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
-	// Initialize event broker
-	if err := container.initEventBroker(); err != nil {
-		return nil, fmt.Errorf("failed to initialize event broker: %w", err)
+	// Initialize Kafka event publisher
+	if err := container.initEventPublisher(); err != nil {
+		return nil, fmt.Errorf("failed to initialize event publisher: %w", err)
 	}
 
 	// Initialize router and server
@@ -125,12 +126,35 @@ func (c *Container) initDatabase() error {
 	return nil
 }
 
-// initEventBroker sets up the event broadcasting system
-func (c *Container) initEventBroker() error {
-	// Get the singleton event broker instance
-	c.EventBroker = events.GetBroker()
+// initEventPublisher sets up the Kafka event publisher
+func (c *Container) initEventPublisher() error {
+	// Check if Kafka is enabled (default: enabled, can be disabled for tests)
+	kafkaEnabled := os.Getenv("KAFKA_ENABLED")
+	if kafkaEnabled == "false" {
+		logging.Info("Kafka disabled, using no-op event publisher", nil)
+		c.EventPublisher = messaging.NewNoOpEventPublisher()
+		return nil
+	}
 
-	logging.Info("Event broker initialized", nil)
+	// Load Kafka configuration from environment
+	kafkaConfig := kafka.NewConfigFromEnv()
+
+	// Initialize Kafka event publisher
+	publisher, err := messaging.NewKafkaEventPublisher(kafkaConfig)
+	if err != nil {
+		// If Kafka fails to initialize, fall back to no-op publisher
+		// This allows the application to start even if Kafka is not available
+		logging.Warn("Failed to initialize Kafka, using no-op event publisher", map[string]interface{}{
+			"error": err.Error(),
+		})
+		c.EventPublisher = messaging.NewNoOpEventPublisher()
+		return nil
+	}
+
+	c.EventPublisher = publisher
+	logging.Info("Kafka event publisher initialized", map[string]interface{}{
+		"brokers": kafkaConfig.Brokers,
+	})
 	return nil
 }
 
@@ -147,8 +171,8 @@ func (c *Container) initServer() error {
 	// Apply global middleware
 	c.Router.Use(middleware.CORS(c.Config))
 
-	// Register all routes
-	routes.RegisterRoutes(c.Router)
+	// Register all routes with container
+	routes.RegisterRoutes(c.Router, c)
 
 	// Create HTTP server
 	c.Server = &http.Server{
@@ -211,8 +235,12 @@ func (c *Container) Shutdown(ctx context.Context) error {
 		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 
-	// Here we could add cleanup for other components if needed
-	// For example: close database connections, flush metrics, etc.
+	// Close Kafka event publisher
+	if c.EventPublisher != nil {
+		if err := c.EventPublisher.Close(); err != nil {
+			logging.Error("Failed to close event publisher", err, nil)
+		}
+	}
 
 	return nil
 }
@@ -220,11 +248,6 @@ func (c *Container) Shutdown(ctx context.Context) error {
 // GetDatabase returns the database repository
 func (c *Container) GetDatabase() database.Repository {
 	return c.Database
-}
-
-// GetEventBroker returns the event broker
-func (c *Container) GetEventBroker() *events.Broker {
-	return c.EventBroker
 }
 
 // GetConfig returns the configuration
@@ -235,4 +258,9 @@ func (c *Container) GetConfig() *config.Config {
 // GetRouter returns the Gin router
 func (c *Container) GetRouter() *gin.Engine {
 	return c.Router
+}
+
+// GetEventPublisher returns the event publisher
+func (c *Container) GetEventPublisher() messaging.EventPublisher {
+	return c.EventPublisher
 }

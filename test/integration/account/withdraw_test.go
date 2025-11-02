@@ -19,7 +19,7 @@ func TestWithdraw(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
-	testenv.Deposit(t, router, accountID, 5000)
+	testenv.SetBalance(t, accountID, 5000)
 
 	body := map[string]int{"amount": 3000}
 	jsonBody, _ := json.Marshal(body)
@@ -45,7 +45,7 @@ func TestWithdrawInvalidAmount(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
-	testenv.Deposit(t, router, accountID, 500)
+	testenv.SetBalance(t, accountID, 500)
 
 	body := map[string]int{"amount": -100}
 	jsonBody, _ := json.Marshal(body)
@@ -67,7 +67,7 @@ func TestWithdrawInsufficientBalance(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "Nícolas")
-	testenv.Deposit(t, router, accountID, 100)
+	testenv.SetBalance(t, accountID, 100)
 
 	body := map[string]int{"amount": 500}
 	jsonBody, _ := json.Marshal(body)
@@ -112,7 +112,7 @@ func TestConcurrentWithdraw(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "ConcurrentWithdraw")
-	testenv.Deposit(t, router, accountID, 10000) // R$ 100,00
+	testenv.SetBalance(t, accountID, 10000) // R$ 100,00
 
 	var wg sync.WaitGroup
 	n := 100

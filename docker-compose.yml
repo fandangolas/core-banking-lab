@@ -61,6 +61,81 @@ services:
       - "-c"
       - "log_min_duration_statement=1000"
 
+  # Kafka (KRaft mode - no ZooKeeper needed)
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: banking-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      # KRaft configuration
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      # Listeners
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      # Cluster ID (generate with: kafka-storage random-uuid)
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+      # Topic auto-creation
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+
+      # Retention policy (30 days for audit compliance)
+      KAFKA_LOG_RETENTION_HOURS: 720
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+
+      # Performance tuning
+      KAFKA_COMPRESSION_TYPE: 'snappy'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Logging
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    command:
+      - bash
+      - -c
+      - |
+        # Format storage if not already formatted
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          kafka-storage format -t $$CLUSTER_ID -c /etc/kafka/kafka.properties
+        fi
+        # Start Kafka
+        /etc/confluent/docker/run
+
+  # Kafka UI (for debugging and monitoring)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: banking-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: banking-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   # Banking API
   api:
     build:
@@ -81,12 +156,21 @@ services:
       DB_MAX_OPEN_CONNS: 25
       DB_MAX_IDLE_CONNS: 5
       DB_CONN_MAX_LIFETIME: 30m
+      # Kafka configuration
+      KAFKA_ENABLED: 'true'
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CLIENT_ID: banking-api
+      KAFKA_ENABLE_IDEMPOTENCE: 'true'
+      KAFKA_COMPRESSION_TYPE: snappy
+      KAFKA_REQUIRED_ACKS: all
       # Application configuration
       RATE_LIMIT_REQUESTS_PER_MINUTE: 2000
       SERVER_PORT: 8080
       LOG_LEVEL: info
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/metrics"]
@@ -127,6 +211,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  kafka_data:
     driver: local
   prometheus_data:
     driver: local

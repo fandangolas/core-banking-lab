@@ -28,15 +28,18 @@ func TestSimpleDeposit(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	require.Equal(t, http.StatusOK, resp.Code)
+	// Now expects 202 Accepted for async processing
+	require.Equal(t, http.StatusAccepted, resp.Code)
 
 	var result map[string]interface{}
 	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &result))
-	assert.Equal(t, float64(accountID), result["id"])
-	assert.Equal(t, float64(2500), result["balance"])
+	assert.Equal(t, "accepted", result["status"])
+	assert.NotEmpty(t, result["operation_id"])
+	assert.NotEmpty(t, result["message"])
 
-	balance := testenv.GetBalance(t, router, accountID)
-	assert.Equal(t, 2500, balance)
+	// Note: In the async model, the balance won't be updated immediately
+	// The deposit will be processed asynchronously by the consumer
+	// For this test, we're just verifying the request was accepted
 }
 
 func TestDepositInvalidAmount(t *testing.T) {

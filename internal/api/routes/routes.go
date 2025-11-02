@@ -7,20 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(router *gin.Engine) {
+// RegisterRoutes registers all routes with the container dependencies
+func RegisterRoutes(router *gin.Engine, container handlers.HandlerDependencies) {
 	router.Use(middleware.RequestContextMiddleware()) // Add request-scoped context (first!)
 	router.Use(middleware.Metrics())
 	router.Use(middleware.PrometheusMiddleware()) // Add Prometheus metrics collection
 
-	router.POST("/accounts", handlers.CreateAccount)
-	router.GET("/accounts/:id/balance", handlers.GetBalance)
-	router.POST("/accounts/:id/deposit", handlers.Deposit)
-	router.POST("/accounts/:id/withdraw", handlers.Withdraw)
-	router.POST("/accounts/transfer", handlers.Transfer)
+	// Banking operations - using closure-based handlers with container dependencies
+	router.POST("/accounts", handlers.MakeCreateAccountHandler(container))
+	router.GET("/accounts/:id/balance", handlers.MakeGetBalanceHandler(container))
+	router.POST("/accounts/:id/deposit", handlers.MakeDepositHandler(container))
+	router.POST("/accounts/:id/withdraw", handlers.MakeWithdrawHandler(container))
+	router.POST("/accounts/transfer", handlers.MakeTransferHandler(container))
 
-	// Keep original metrics endpoint for compatibility
+	// System endpoints
 	router.GET("/metrics", handlers.GetMetrics)
-	// Add Prometheus metrics endpoint
 	router.GET("/prometheus", handlers.PrometheusMetrics)
-	router.GET("/events", handlers.Events)
 }
