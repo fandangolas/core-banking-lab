@@ -11,6 +11,10 @@ type Repository interface {
 	GetAccount(id int) (*models.Account, bool)
 	UpdateAccount(acc *models.Account)
 	Reset()
+
+	// Atomic operations for concurrency safety
+	AtomicWithdraw(accountID int, amount int) (*models.Account, error)
+	AtomicTransfer(fromID int, toID int, amount int) (*models.Account, *models.Account, error)
 }
 
 var (

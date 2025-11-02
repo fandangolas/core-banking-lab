@@ -271,3 +271,181 @@ func (r *PostgresRepository) GetTransactionHistory(accountID int, limit int) ([]
 
 	return transactions, nil
 }
+
+// AtomicWithdraw performs an atomic withdrawal operation using SELECT FOR UPDATE
+// This ensures no lost updates in concurrent scenarios
+func (r *PostgresRepository) AtomicWithdraw(accountID int, amount int) (*models.Account, error) {
+	ctx := context.Background()
+
+	// Start transaction
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock the row with SELECT FOR UPDATE
+	query := `
+		SELECT id, owner, balance, created_at
+		FROM accounts
+		WHERE id = $1
+		FOR UPDATE
+	`
+
+	var account models.Account
+	var balanceDecimal float64
+
+	err = tx.QueryRow(ctx, query, accountID).Scan(
+		&account.Id,
+		&account.Owner,
+		&balanceDecimal,
+		&account.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("account not found: %w", err)
+	}
+
+	// Convert balance from DECIMAL to cents
+	account.Balance = int(balanceDecimal * 100)
+
+	// Check if sufficient balance
+	if account.Balance < amount {
+		return nil, fmt.Errorf("insufficient balance")
+	}
+
+	// Update balance
+	newBalance := account.Balance - amount
+	newBalanceDecimal := float64(newBalance) / 100.0
+
+	updateQuery := `
+		UPDATE accounts
+		SET balance = $1, version = version + 1
+		WHERE id = $2
+	`
+
+	_, err = tx.Exec(ctx, updateQuery, newBalanceDecimal, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update balance: %w", err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	account.Balance = newBalance
+	log.Printf("Atomic withdraw: ID=%d, Amount=%.2f, NewBalance=%.2f", accountID, float64(amount)/100, newBalanceDecimal)
+
+	return &account, nil
+}
+
+// AtomicTransfer performs an atomic transfer operation using SELECT FOR UPDATE
+// This ensures no lost updates and no deadlocks (by ordering locks)
+func (r *PostgresRepository) AtomicTransfer(fromID int, toID int, amount int) (*models.Account, *models.Account, error) {
+	ctx := context.Background()
+
+	// Start transaction
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock accounts in order (lower ID first) to prevent deadlocks
+	firstID, secondID := fromID, toID
+	if fromID > toID {
+		firstID, secondID = toID, fromID
+	}
+
+	// Lock first account
+	query := `
+		SELECT id, owner, balance, created_at
+		FROM accounts
+		WHERE id = $1
+		FOR UPDATE
+	`
+
+	var firstAccount, secondAccount models.Account
+	var firstBalanceDecimal, secondBalanceDecimal float64
+
+	err = tx.QueryRow(ctx, query, firstID).Scan(
+		&firstAccount.Id,
+		&firstAccount.Owner,
+		&firstBalanceDecimal,
+		&firstAccount.CreatedAt,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("first account not found: %w", err)
+	}
+
+	// Lock second account
+	err = tx.QueryRow(ctx, query, secondID).Scan(
+		&secondAccount.Id,
+		&secondAccount.Owner,
+		&secondBalanceDecimal,
+		&secondAccount.CreatedAt,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("second account not found: %w", err)
+	}
+
+	// Assign correct accounts based on original fromID/toID
+	var fromAccount, toAccount *models.Account
+	var fromBalanceDecimal, toBalanceDecimal float64
+
+	if firstAccount.Id == fromID {
+		fromAccount = &firstAccount
+		fromBalanceDecimal = firstBalanceDecimal
+		toAccount = &secondAccount
+		toBalanceDecimal = secondBalanceDecimal
+	} else {
+		fromAccount = &secondAccount
+		fromBalanceDecimal = secondBalanceDecimal
+		toAccount = &firstAccount
+		toBalanceDecimal = firstBalanceDecimal
+	}
+
+	// Convert balances from DECIMAL to cents
+	fromAccount.Balance = int(fromBalanceDecimal * 100)
+	toAccount.Balance = int(toBalanceDecimal * 100)
+
+	// Check if sufficient balance
+	if fromAccount.Balance < amount {
+		return nil, nil, fmt.Errorf("insufficient balance")
+	}
+
+	// Update balances
+	newFromBalance := fromAccount.Balance - amount
+	newToBalance := toAccount.Balance + amount
+
+	updateQuery := `
+		UPDATE accounts
+		SET balance = $1, version = version + 1
+		WHERE id = $2
+	`
+
+	// Update from account
+	_, err = tx.Exec(ctx, updateQuery, float64(newFromBalance)/100.0, fromID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to update from account: %w", err)
+	}
+
+	// Update to account
+	_, err = tx.Exec(ctx, updateQuery, float64(newToBalance)/100.0, toID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to update to account: %w", err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	fromAccount.Balance = newFromBalance
+	toAccount.Balance = newToBalance
+
+	log.Printf("Atomic transfer: From=%d, To=%d, Amount=%.2f", fromID, toID, float64(amount)/100)
+
+	return fromAccount, toAccount, nil
+}

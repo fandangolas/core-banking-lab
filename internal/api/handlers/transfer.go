@@ -60,62 +60,36 @@ func Transfer(c *gin.Context) {
 		return
 	}
 
-	from, ok := database.Repo.GetAccount(req.FromID)
-	if !ok {
-		apiErr := errors.NewAccountNotFoundError()
-		logging.Warn("Source account not found", map[string]interface{}{
-			"from_account_id": req.FromID,
-			"to_account_id":   req.ToID,
-			"amount":          req.Amount,
-			"ip":              c.ClientIP(),
-		})
-		c.JSON(apiErr.Status, apiErr)
-		return
-	}
+	// Use atomic transfer operation to prevent race conditions
+	from, to, err := database.Repo.AtomicTransfer(req.FromID, req.ToID, req.Amount)
 
-	to, ok := database.Repo.GetAccount(req.ToID)
-	if !ok {
-		apiErr := errors.NewAccountNotFoundError()
-		logging.Warn("Destination account not found", map[string]interface{}{
-			"from_account_id": req.FromID,
-			"to_account_id":   req.ToID,
-			"amount":          req.Amount,
-			"ip":              c.ClientIP(),
-		})
-		c.JSON(apiErr.Status, apiErr)
-		return
-	}
-
-	if from.Id < to.Id {
-		from.Mu.Lock()
-		to.Mu.Lock()
-	} else {
-		to.Mu.Lock()
-		from.Mu.Lock()
-	}
-	defer from.Mu.Unlock()
-	defer to.Mu.Unlock()
-
-	if from.Balance < req.Amount {
-		apiErr := errors.NewInsufficientFundsError()
-		logging.Warn("Transfer failed: insufficient funds", map[string]interface{}{
-			"from_account_id": req.FromID,
-			"to_account_id":   req.ToID,
-			"amount":          req.Amount,
-			"current_balance": from.Balance,
-			"ip":              c.ClientIP(),
-		})
+	if err != nil {
 		// Record failed operation
 		metrics.RecordBankingOperation("transfer", "error")
-		c.JSON(apiErr.Status, apiErr)
+
+		// Check error type
+		if err.Error() == "insufficient balance" {
+			apiErr := errors.NewInsufficientFundsError()
+			logging.Warn("Transfer failed: insufficient funds", map[string]interface{}{
+				"from_account_id": req.FromID,
+				"to_account_id":   req.ToID,
+				"amount":          req.Amount,
+				"ip":              c.ClientIP(),
+			})
+			c.JSON(apiErr.Status, apiErr)
+		} else {
+			apiErr := errors.NewAccountNotFoundError()
+			logging.Warn("Transfer failed: account not found", map[string]interface{}{
+				"from_account_id": req.FromID,
+				"to_account_id":   req.ToID,
+				"amount":          req.Amount,
+				"error":           err.Error(),
+				"ip":              c.ClientIP(),
+			})
+			c.JSON(apiErr.Status, apiErr)
+		}
 		return
 	}
-
-	from.Balance -= req.Amount
-	to.Balance += req.Amount
-
-	database.Repo.UpdateAccount(from)
-	database.Repo.UpdateAccount(to)
 
 	// Record successful operation and metrics
 	metrics.RecordBankingOperation("transfer", "success")
