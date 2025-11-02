@@ -9,6 +9,14 @@ type AccountCreatedEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// DepositRequestedEvent represents a deposit command request
+type DepositRequestedEvent struct {
+	OperationID string    `json:"operation_id"` // UUID for tracking
+	AccountID   int       `json:"account_id"`
+	Amount      int       `json:"amount"` // in cents
+	Timestamp   time.Time `json:"timestamp"`
+}
+
 // DepositCompletedEvent represents a successful deposit
 type DepositCompletedEvent struct {
 	AccountID    int       `json:"account_id"`

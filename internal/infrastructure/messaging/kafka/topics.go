@@ -3,6 +3,7 @@ package kafka
 // Topic names for banking events
 const (
 	TopicAccountCreated        = "banking.accounts.created"
+	TopicDepositRequests       = "banking.commands.deposit-requests"
 	TopicTransactionDeposit    = "banking.transactions.deposit"
 	TopicTransactionWithdrawal = "banking.transactions.withdrawal"
 	TopicTransactionTransfer   = "banking.transactions.transfer"
@@ -13,6 +14,7 @@ const (
 func GetAllTopics() []string {
 	return []string{
 		TopicAccountCreated,
+		TopicDepositRequests,
 		TopicTransactionDeposit,
 		TopicTransactionWithdrawal,
 		TopicTransactionTransfer,

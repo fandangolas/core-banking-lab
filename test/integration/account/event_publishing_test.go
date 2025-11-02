@@ -43,7 +43,7 @@ func TestAccountCreatedEventPublished(t *testing.T) {
 	assert.False(t, event.Timestamp.IsZero())
 }
 
-// TestDepositEventPublished verifies that DepositCompletedEvent is published
+// TestDepositEventPublished verifies that DepositRequestedEvent is published (async pattern)
 func TestDepositEventPublished(t *testing.T) {
 	testenv.SetupIntegrationTest(t)
 	container := testenv.NewTestContainer()
@@ -55,7 +55,7 @@ func TestDepositEventPublished(t *testing.T) {
 	// Create account first
 	accountID := testenv.CreateAccount(t, router, "Bob")
 
-	// Make deposit
+	// Make deposit request (async)
 	body := map[string]int{"amount": 1000}
 	jsonBody, _ := json.Marshal(body)
 
@@ -65,16 +65,17 @@ func TestDepositEventPublished(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	require.Equal(t, http.StatusOK, resp.Code)
+	// Now expects 202 Accepted for async processing
+	require.Equal(t, http.StatusAccepted, resp.Code)
 
-	// Verify deposit event was captured
-	events := eventPublisher.GetDepositCompletedEvents()
-	require.Len(t, events, 1, "Expected exactly one DepositCompletedEvent")
+	// Verify deposit request event was captured (not completion event)
+	events := eventPublisher.GetDepositRequestedEvents()
+	require.Len(t, events, 1, "Expected exactly one DepositRequestedEvent")
 
 	event := events[0]
 	assert.Equal(t, accountID, event.AccountID)
 	assert.Equal(t, 1000, event.Amount)
-	assert.Equal(t, 1000, event.BalanceAfter)
+	assert.NotEmpty(t, event.OperationID, "Operation ID should be generated")
 	assert.False(t, event.Timestamp.IsZero())
 }
 
@@ -89,7 +90,7 @@ func TestWithdrawalEventPublished(t *testing.T) {
 
 	// Create account and deposit funds
 	accountID := testenv.CreateAccount(t, router, "Charlie")
-	testenv.Deposit(t, router, accountID, 2000)
+	testenv.SetBalance(t, accountID, 2000)
 
 	// Reset events to clear the deposit event
 	eventPublisher.Reset()
@@ -131,7 +132,7 @@ func TestTransferEventPublished(t *testing.T) {
 	toID := testenv.CreateAccount(t, router, "Eve")
 
 	// Deposit funds into from account
-	testenv.Deposit(t, router, fromID, 3000)
+	testenv.SetBalance(t, fromID, 3000)
 
 	// Reset events to clear previous events
 	eventPublisher.Reset()
@@ -178,26 +179,19 @@ func TestMultipleOperationsEventSequence(t *testing.T) {
 	accountID := testenv.CreateAccount(t, router, "Frank")
 
 	// Perform multiple operations
-	testenv.Deposit(t, router, accountID, 1000)
-	testenv.Deposit(t, router, accountID, 500)
+	// Note: SetBalance is for test fixtures and doesn't publish events
+	// It directly updates the database, bypassing the async deposit mechanism
+	testenv.SetBalance(t, accountID, 1500) // Set balance directly for withdraw test
 	testenv.Withdraw(t, router, accountID, 300)
 
 	// Verify all events were captured
 	accountEvents := eventPublisher.GetAccountCreatedEvents()
-	depositEvents := eventPublisher.GetDepositCompletedEvents()
 	withdrawalEvents := eventPublisher.GetWithdrawalCompletedEvents()
 
 	assert.Len(t, accountEvents, 1, "Expected 1 account creation event")
-	assert.Len(t, depositEvents, 2, "Expected 2 deposit events")
 	assert.Len(t, withdrawalEvents, 1, "Expected 1 withdrawal event")
 
-	// Verify event order and balances
-	assert.Equal(t, 1000, depositEvents[0].Amount)
-	assert.Equal(t, 1000, depositEvents[0].BalanceAfter)
-
-	assert.Equal(t, 500, depositEvents[1].Amount)
-	assert.Equal(t, 1500, depositEvents[1].BalanceAfter)
-
+	// Verify withdrawal event details
 	assert.Equal(t, 300, withdrawalEvents[0].Amount)
 	assert.Equal(t, 1200, withdrawalEvents[0].BalanceAfter)
 }
@@ -211,19 +205,18 @@ func TestEventCaptureReset(t *testing.T) {
 	router := container.GetRouter()
 	eventPublisher := container.GetEventPublisher()
 
-	// Create account and make deposit
-	accountID := testenv.CreateAccount(t, router, "Grace")
-	testenv.Deposit(t, router, accountID, 1000)
+	// Create account
+	testenv.CreateAccount(t, router, "Grace")
 
-	// Verify events were captured
+	// Verify account creation event was captured
 	assert.Len(t, eventPublisher.GetAccountCreatedEvents(), 1)
-	assert.Len(t, eventPublisher.GetDepositCompletedEvents(), 1)
 
 	// Reset event capture
 	eventPublisher.Reset()
 
 	// Verify all events were cleared
 	assert.Len(t, eventPublisher.GetAccountCreatedEvents(), 0)
+	assert.Len(t, eventPublisher.GetDepositRequestedEvents(), 0)
 	assert.Len(t, eventPublisher.GetDepositCompletedEvents(), 0)
 	assert.Len(t, eventPublisher.GetWithdrawalCompletedEvents(), 0)
 	assert.Len(t, eventPublisher.GetTransferCompletedEvents(), 0)

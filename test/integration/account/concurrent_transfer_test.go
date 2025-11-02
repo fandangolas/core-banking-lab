@@ -19,8 +19,8 @@ func TestConcurrentTransfer(t *testing.T) {
 	fromID := testenv.CreateAccount(t, router, "Fonte")
 	toID := testenv.CreateAccount(t, router, "Destino")
 
-	// Damos saldo inicial à conta origem
-	testenv.Deposit(t, router, fromID, 10000) // R$ 100,00
+	// Set initial balance directly for test setup (bypass async deposit)
+	testenv.SetBalance(t, fromID, 10000) // R$ 100,00
 
 	var wg sync.WaitGroup
 	n := 100

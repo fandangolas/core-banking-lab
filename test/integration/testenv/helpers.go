@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"testing"
 
+	"bank-api/internal/domain/account"
+	"bank-api/internal/infrastructure/database"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,7 +49,7 @@ func GetBalance(t *testing.T, r *gin.Engine, id int) int {
 	return int(result["balance"].(float64))
 }
 
-func Deposit(t *testing.T, r *gin.Engine, id int, amount int) {
+func Deposit(t *testing.T, r *gin.Engine, id int, amount int) string {
 	body := map[string]int{"amount": amount}
 	jsonBody, _ := json.Marshal(body)
 
@@ -56,9 +59,18 @@ func Deposit(t *testing.T, r *gin.Engine, id int, amount int) {
 
 	r.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK {
+	// Now expects 202 Accepted for async processing
+	if resp.Code != http.StatusAccepted {
 		t.Fatalf("erro no depósito: %d", resp.Code)
 	}
+
+	// Return operation ID for tracking
+	var result map[string]interface{}
+	json.Unmarshal(resp.Body.Bytes(), &result)
+	if opID, ok := result["operation_id"].(string); ok {
+		return opID
+	}
+	return ""
 }
 
 func Withdraw(t *testing.T, r *gin.Engine, id int, amount int) {
@@ -85,4 +97,20 @@ func AssertHasError(t *testing.T, result map[string]interface{}) {
 	} else {
 		t.Error("No error message found in response")
 	}
+}
+
+// SetBalance directly sets an account balance for test setup purposes
+// This bypasses the async deposit mechanism and is only for test fixtures
+func SetBalance(t *testing.T, accountID int, amount int) {
+	acc, ok := database.Repo.GetAccount(accountID)
+	if !ok {
+		t.Fatalf("account not found: %d", accountID)
+	}
+
+	// Add the amount to the account
+	if err := domain.AddAmount(acc, amount); err != nil {
+		t.Fatalf("failed to add amount: %v", err)
+	}
+
+	database.Repo.UpdateAccount(acc)
 }

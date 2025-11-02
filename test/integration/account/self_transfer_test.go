@@ -17,7 +17,7 @@ func TestTransferToSameAccount(t *testing.T) {
 	router := testenv.SetupRouter()
 
 	accountID := testenv.CreateAccount(t, router, "Self")
-	testenv.Deposit(t, router, accountID, 1000)
+	testenv.SetBalance(t, accountID, 1000)
 
 	body := map[string]int{
 		"from":   accountID,

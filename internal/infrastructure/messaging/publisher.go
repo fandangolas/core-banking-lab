@@ -10,6 +10,7 @@ import (
 // EventPublisher defines the interface for publishing banking events
 type EventPublisher interface {
 	PublishAccountCreated(event AccountCreatedEvent) error
+	PublishDepositRequested(event DepositRequestedEvent) error
 	PublishDepositCompleted(event DepositCompletedEvent) error
 	PublishWithdrawalCompleted(event WithdrawalCompletedEvent) error
 	PublishTransferCompleted(event TransferCompletedEvent) error
@@ -39,6 +40,12 @@ func NewKafkaEventPublisher(config *kafka.Config) (*KafkaEventPublisher, error) 
 func (p *KafkaEventPublisher) PublishAccountCreated(event AccountCreatedEvent) error {
 	key := strconv.Itoa(event.AccountID)
 	return p.producer.PublishEvent(kafka.TopicAccountCreated, key, event)
+}
+
+// PublishDepositRequested publishes a deposit request command
+func (p *KafkaEventPublisher) PublishDepositRequested(event DepositRequestedEvent) error {
+	key := strconv.Itoa(event.AccountID)
+	return p.producer.PublishEvent(kafka.TopicDepositRequests, key, event)
 }
 
 // PublishDepositCompleted publishes a deposit completed event
@@ -90,6 +97,7 @@ func NewNoOpEventPublisher() *NoOpEventPublisher {
 }
 
 func (p *NoOpEventPublisher) PublishAccountCreated(event AccountCreatedEvent) error     { return nil }
+func (p *NoOpEventPublisher) PublishDepositRequested(event DepositRequestedEvent) error { return nil }
 func (p *NoOpEventPublisher) PublishDepositCompleted(event DepositCompletedEvent) error { return nil }
 func (p *NoOpEventPublisher) PublishWithdrawalCompleted(event WithdrawalCompletedEvent) error {
 	return nil

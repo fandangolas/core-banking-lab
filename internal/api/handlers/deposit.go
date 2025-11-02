@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bank-api/internal/domain/account"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
@@ -17,12 +17,11 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 	db := container.GetDatabase()
 	publisher := container.GetEventPublisher()
 
-	// TODO: Refactor to event-driven architecture (fire-and-forget pattern)
-	// Current: Synchronous - DB update then Kafka publish
-	// Future: Async - Publish DepositRequestedEvent to Kafka (202 Accepted),
-	//         Kafka consumer processes event, updates DB, publishes DepositCompletedEvent
-	// Benefits: Better scalability, failure isolation, async processing
-	// Related: withdraw, transfer handlers could follow same pattern
+	// Event-driven fire-and-forget pattern:
+	// 1. Validate account exists (fail fast)
+	// 2. Publish DepositRequestedEvent to Kafka
+	// 3. Return 202 Accepted with operation_id for tracking
+	// 4. Consumer processes event asynchronously, updates DB, publishes DepositCompletedEvent
 
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
@@ -40,44 +39,43 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 			return
 		}
 
-		account, ok := db.GetAccount(id)
+		// Fail fast - validate account exists before publishing event
+		_, ok := db.GetAccount(id)
 		if !ok {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
 			return
 		}
 
-		if err := domain.AddAmount(account, req.Amount); err != nil {
-			// Record failed operation
+		// Generate unique operation ID for tracking
+		operationID := uuid.New().String()
+
+		// Publish deposit request event to Kafka (fire-and-forget)
+		event := messaging.DepositRequestedEvent{
+			OperationID: operationID,
+			AccountID:   id,
+			Amount:      req.Amount,
+			Timestamp:   time.Now(),
+		}
+
+		if err := publisher.PublishDepositRequested(event); err != nil {
+			logging.Error("Failed to publish deposit request event", err, map[string]interface{}{
+				"operation_id": operationID,
+				"account_id":   id,
+				"amount":       req.Amount,
+			})
 			metrics.RecordBankingOperation("deposit", "error")
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process deposit request"})
 			return
 		}
 
-		db.UpdateAccount(account)
+		// Record successful request acceptance
+		metrics.RecordBankingOperation("deposit", "accepted")
 
-		balance := domain.GetBalance(account)
-
-		// Record successful operation and metrics
-		metrics.RecordBankingOperation("deposit", "success")
-		metrics.RecordAccountBalance(float64(balance))
-
-		// Publish deposit completed event to Kafka
-		event := messaging.DepositCompletedEvent{
-			AccountID:    account.Id,
-			Amount:       req.Amount,
-			BalanceAfter: balance,
-			Timestamp:    time.Now(),
-		}
-		if err := publisher.PublishDepositCompleted(event); err != nil {
-			logging.Error("Failed to publish deposit completed event", err, map[string]interface{}{
-				"account_id": account.Id,
-				"amount":     req.Amount,
-			})
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"id":      account.Id,
-			"balance": balance,
+		// Return 202 Accepted with operation ID for tracking
+		c.JSON(http.StatusAccepted, gin.H{
+			"operation_id": operationID,
+			"status":       "accepted",
+			"message":      "Deposit request accepted and will be processed asynchronously",
 		})
 	}
 }

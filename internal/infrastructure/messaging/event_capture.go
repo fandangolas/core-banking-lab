@@ -6,6 +6,7 @@ import "sync"
 // It captures all published events and allows verification in tests
 type EventCapture struct {
 	accountCreated      []AccountCreatedEvent
+	depositRequested    []DepositRequestedEvent
 	depositCompleted    []DepositCompletedEvent
 	withdrawalCompleted []WithdrawalCompletedEvent
 	transferCompleted   []TransferCompletedEvent
@@ -17,6 +18,7 @@ type EventCapture struct {
 func NewEventCapture() *EventCapture {
 	return &EventCapture{
 		accountCreated:      make([]AccountCreatedEvent, 0),
+		depositRequested:    make([]DepositRequestedEvent, 0),
 		depositCompleted:    make([]DepositCompletedEvent, 0),
 		withdrawalCompleted: make([]WithdrawalCompletedEvent, 0),
 		transferCompleted:   make([]TransferCompletedEvent, 0),
@@ -29,6 +31,14 @@ func (e *EventCapture) PublishAccountCreated(event AccountCreatedEvent) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.accountCreated = append(e.accountCreated, event)
+	return nil
+}
+
+// PublishDepositRequested captures deposit requested event
+func (e *EventCapture) PublishDepositRequested(event DepositRequestedEvent) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.depositRequested = append(e.depositRequested, event)
 	return nil
 }
 
@@ -84,6 +94,15 @@ func (e *EventCapture) GetAccountCreatedEvents() []AccountCreatedEvent {
 	return events
 }
 
+// GetDepositRequestedEvents returns all captured deposit requested events
+func (e *EventCapture) GetDepositRequestedEvents() []DepositRequestedEvent {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	events := make([]DepositRequestedEvent, len(e.depositRequested))
+	copy(events, e.depositRequested)
+	return events
+}
+
 // GetDepositCompletedEvents returns all captured deposit completed events
 func (e *EventCapture) GetDepositCompletedEvents() []DepositCompletedEvent {
 	e.mu.RLock()
@@ -125,6 +144,7 @@ func (e *EventCapture) Reset() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.accountCreated = make([]AccountCreatedEvent, 0)
+	e.depositRequested = make([]DepositRequestedEvent, 0)
 	e.depositCompleted = make([]DepositCompletedEvent, 0)
 	e.withdrawalCompleted = make([]WithdrawalCompletedEvent, 0)
 	e.transferCompleted = make([]TransferCompletedEvent, 0)
@@ -135,7 +155,7 @@ func (e *EventCapture) Reset() {
 func (e *EventCapture) GetEventCount() int {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return len(e.accountCreated) + len(e.depositCompleted) +
-		len(e.withdrawalCompleted) + len(e.transferCompleted) +
-		len(e.transactionFailed)
+	return len(e.accountCreated) + len(e.depositRequested) +
+		len(e.depositCompleted) + len(e.withdrawalCompleted) +
+		len(e.transferCompleted) + len(e.transactionFailed)
 }
