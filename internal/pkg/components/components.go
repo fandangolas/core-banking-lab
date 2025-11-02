@@ -187,8 +187,8 @@ func (c *Container) initServer() error {
 	// Apply global middleware
 	c.Router.Use(middleware.CORS(c.Config))
 
-	// Register all routes with event publisher
-	routes.RegisterRoutesWithEventPublisher(c.Router, c.EventPublisher)
+	// Register all routes with container
+	routes.RegisterRoutes(c.Router, c)
 
 	// Create HTTP server
 	c.Server = &http.Server{

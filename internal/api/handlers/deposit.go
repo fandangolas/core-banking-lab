@@ -15,69 +15,82 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Deposit(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid identifier (id)"})
-		return
-	}
+func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
+	// Extract dependencies once at handler creation time
+	db := container.GetDatabase()
+	publisher := container.GetEventPublisher()
 
-	var req struct {
-		Amount int `json:"amount"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid value"})
-		return
-	}
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid identifier (id)"})
+			return
+		}
 
-	account, ok := database.Repo.GetAccount(id)
-	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
-		return
-	}
+		var req struct {
+			Amount int `json:"amount"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid value"})
+			return
+		}
 
-	if err := domain.AddAmount(account, req.Amount); err != nil {
-		// Record failed operation
-		metrics.RecordBankingOperation("deposit", "error")
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+		account, ok := db.GetAccount(id)
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+			return
+		}
 
-	database.Repo.UpdateAccount(account)
+		if err := domain.AddAmount(account, req.Amount); err != nil {
+			// Record failed operation
+			metrics.RecordBankingOperation("deposit", "error")
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	balance := domain.GetBalance(account)
+		db.UpdateAccount(account)
 
-	// Record successful operation and metrics
-	metrics.RecordBankingOperation("deposit", "success")
-	metrics.RecordAccountBalance(float64(balance))
+		balance := domain.GetBalance(account)
 
-	// Publish legacy event (for backward compatibility)
-	events.GetBroker().Publish(models.TransactionEvent{
-		Type:      "deposit",
-		AccountID: account.Id,
-		Amount:    req.Amount,
-		Balance:   balance,
-		Timestamp: time.Now(),
-	})
+		// Record successful operation and metrics
+		metrics.RecordBankingOperation("deposit", "success")
+		metrics.RecordAccountBalance(float64(balance))
 
-	// Publish deposit completed event to Kafka
-	publisher := GetEventPublisher(c)
-	event := messaging.DepositCompletedEvent{
-		AccountID:    account.Id,
-		Amount:       req.Amount,
-		BalanceAfter: balance,
-		Timestamp:    time.Now(),
-	}
-	if err := publisher.PublishDepositCompleted(event); err != nil {
-		logging.Error("Failed to publish deposit completed event", err, map[string]interface{}{
-			"account_id": account.Id,
-			"amount":     req.Amount,
+		// Publish legacy event (for backward compatibility)
+		events.GetBroker().Publish(models.TransactionEvent{
+			Type:      "deposit",
+			AccountID: account.Id,
+			Amount:    req.Amount,
+			Balance:   balance,
+			Timestamp: time.Now(),
+		})
+
+		// Publish deposit completed event to Kafka
+		event := messaging.DepositCompletedEvent{
+			AccountID:    account.Id,
+			Amount:       req.Amount,
+			BalanceAfter: balance,
+			Timestamp:    time.Now(),
+		}
+		if err := publisher.PublishDepositCompleted(event); err != nil {
+			logging.Error("Failed to publish deposit completed event", err, map[string]interface{}{
+				"account_id": account.Id,
+				"amount":     req.Amount,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"id":      account.Id,
+			"balance": balance,
 		})
 	}
+}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":      account.Id,
-		"balance": balance,
-	})
+// Legacy function for backward compatibility - can be removed after migration
+func Deposit(c *gin.Context) {
+	MakeDepositHandler(&simpleContainer{
+		db:        database.Repo,
+		publisher: messaging.NewNoOpEventPublisher(),
+	})(c)
 }
