@@ -705,7 +705,7 @@ test/                          # Test suites
 **Completion Date**: November 2, 2025
 
 **Steps:**
-1. ✅ Add Kafka + Zookeeper to Docker Compose
+1. ✅ Add Kafka (KRaft mode) to Docker Compose
 2. ✅ Create Kafka producer wrapper (fire-and-forget, idempotent)
 3. ✅ Define event topics and schemas
 4. ✅ Replace event broker calls with Kafka producer

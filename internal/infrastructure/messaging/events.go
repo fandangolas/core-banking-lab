@@ -11,8 +11,8 @@ type AccountCreatedEvent struct {
 
 // DepositRequestedEvent represents a deposit command request
 type DepositRequestedEvent struct {
-	OperationID    string    `json:"operation_id"`     // UUID for tracking (legacy)
-	IdempotencyKey string    `json:"idempotency_key"`  // SHA-256 hash for deduplication
+	OperationID    string    `json:"operation_id"`    // UUID for tracking (legacy)
+	IdempotencyKey string    `json:"idempotency_key"` // SHA-256 hash for deduplication
 	AccountID      int       `json:"account_id"`
 	Amount         int       `json:"amount"` // in cents
 	Timestamp      time.Time `json:"timestamp"`

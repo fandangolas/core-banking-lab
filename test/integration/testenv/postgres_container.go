@@ -142,9 +142,9 @@ func SetupIntegrationTest(t *testing.T) {
 			postgres.WithUsername(cfg.Username),
 			postgres.WithPassword(cfg.Password),
 			postgres.WithInitScripts(
-			"../../../internal/infrastructure/database/postgres/migrations/000001_init_schema.up.sql",
-			"../../../internal/infrastructure/database/postgres/migrations/000002_create_processed_operations.up.sql",
-		),
+				"../../../internal/infrastructure/database/postgres/migrations/000001_init_schema.up.sql",
+				"../../../internal/infrastructure/database/postgres/migrations/000002_create_processed_operations.up.sql",
+			),
 			testcontainers.WithWaitStrategy(
 				wait.ForLog("database system is ready to accept connections").
 					WithOccurrence(2).
