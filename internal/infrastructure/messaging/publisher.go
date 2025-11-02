@@ -89,12 +89,12 @@ func NewNoOpEventPublisher() *NoOpEventPublisher {
 	return &NoOpEventPublisher{}
 }
 
-func (p *NoOpEventPublisher) PublishAccountCreated(event AccountCreatedEvent) error       { return nil }
-func (p *NoOpEventPublisher) PublishDepositCompleted(event DepositCompletedEvent) error   { return nil }
+func (p *NoOpEventPublisher) PublishAccountCreated(event AccountCreatedEvent) error     { return nil }
+func (p *NoOpEventPublisher) PublishDepositCompleted(event DepositCompletedEvent) error { return nil }
 func (p *NoOpEventPublisher) PublishWithdrawalCompleted(event WithdrawalCompletedEvent) error {
 	return nil
 }
 func (p *NoOpEventPublisher) PublishTransferCompleted(event TransferCompletedEvent) error { return nil }
 func (p *NoOpEventPublisher) PublishTransactionFailed(event TransactionFailedEvent) error { return nil }
-func (p *NoOpEventPublisher) Close() error                                                 { return nil }
-func (p *NoOpEventPublisher) IsHealthy() bool                                              { return true }
+func (p *NoOpEventPublisher) Close() error                                                { return nil }
+func (p *NoOpEventPublisher) IsHealthy() bool                                             { return true }

@@ -28,7 +28,7 @@ func RegisterRoutes(router *gin.Engine) {
 
 // RegisterRoutesWithEventPublisher registers routes with event publisher middleware
 func RegisterRoutesWithEventPublisher(router *gin.Engine, publisher messaging.EventPublisher) {
-	router.Use(middleware.RequestContextMiddleware()) // Add request-scoped context (first!)
+	router.Use(middleware.RequestContextMiddleware())          // Add request-scoped context (first!)
 	router.Use(middleware.EventPublisherMiddleware(publisher)) // Inject event publisher
 	router.Use(middleware.Metrics())
 	router.Use(middleware.PrometheusMiddleware()) // Add Prometheus metrics collection

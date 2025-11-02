@@ -11,16 +11,16 @@ type AccountCreatedEvent struct {
 
 // DepositCompletedEvent represents a successful deposit
 type DepositCompletedEvent struct {
-	AccountID  int       `json:"account_id"`
-	Amount     int       `json:"amount"`      // in cents
-	BalanceAfter int     `json:"balance_after"` // in cents
-	Timestamp  time.Time `json:"timestamp"`
+	AccountID    int       `json:"account_id"`
+	Amount       int       `json:"amount"`        // in cents
+	BalanceAfter int       `json:"balance_after"` // in cents
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 // WithdrawalCompletedEvent represents a successful withdrawal
 type WithdrawalCompletedEvent struct {
 	AccountID    int       `json:"account_id"`
-	Amount       int       `json:"amount"`      // in cents
+	Amount       int       `json:"amount"`        // in cents
 	BalanceAfter int       `json:"balance_after"` // in cents
 	Timestamp    time.Time `json:"timestamp"`
 }
@@ -29,7 +29,7 @@ type WithdrawalCompletedEvent struct {
 type TransferCompletedEvent struct {
 	FromAccountID    int       `json:"from_account_id"`
 	ToAccountID      int       `json:"to_account_id"`
-	Amount           int       `json:"amount"`      // in cents
+	Amount           int       `json:"amount"`             // in cents
 	FromBalanceAfter int       `json:"from_balance_after"` // in cents
 	ToBalanceAfter   int       `json:"to_balance_after"`   // in cents
 	Timestamp        time.Time `json:"timestamp"`
@@ -41,7 +41,7 @@ type TransactionFailedEvent struct {
 	AccountID       int       `json:"account_id,omitempty"`
 	FromAccountID   int       `json:"from_account_id,omitempty"`
 	ToAccountID     int       `json:"to_account_id,omitempty"`
-	Amount          int       `json:"amount"`      // in cents
+	Amount          int       `json:"amount"` // in cents
 	ErrorMessage    string    `json:"error_message"`
 	Timestamp       time.Time `json:"timestamp"`
 }

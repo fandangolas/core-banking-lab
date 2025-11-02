@@ -5,12 +5,12 @@ import "sync"
 // EventCapture is an in-memory event publisher for testing
 // It captures all published events and allows verification in tests
 type EventCapture struct {
-	accountCreated        []AccountCreatedEvent
-	depositCompleted      []DepositCompletedEvent
-	withdrawalCompleted   []WithdrawalCompletedEvent
-	transferCompleted     []TransferCompletedEvent
-	transactionFailed     []TransactionFailedEvent
-	mu                    sync.RWMutex
+	accountCreated      []AccountCreatedEvent
+	depositCompleted    []DepositCompletedEvent
+	withdrawalCompleted []WithdrawalCompletedEvent
+	transferCompleted   []TransferCompletedEvent
+	transactionFailed   []TransactionFailedEvent
+	mu                  sync.RWMutex
 }
 
 // NewEventCapture creates a new event capture publisher
