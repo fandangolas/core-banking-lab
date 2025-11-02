@@ -12,16 +12,19 @@ import (
 
 // TestDatabaseSingleton verifies database repository is a true singleton
 func TestDatabaseSingleton(t *testing.T) {
-	// Reset any previous state
-	database.Init()
-	repo1 := database.Repo
+	// Get container (which initializes database)
+	container1, err1 := components.GetInstance()
+	assert.NoError(t, err1)
+	repo1 := container1.Database
 
-	// Call Init again
-	database.Init()
-	repo2 := database.Repo
+	// Get container again
+	container2, err2 := components.GetInstance()
+	assert.NoError(t, err2)
+	repo2 := container2.Database
 
 	// Should be the same instance (singleton behavior)
 	assert.Same(t, repo1, repo2, "Database repository should be singleton")
+	assert.Same(t, repo1, database.Repo, "Database should match global singleton")
 }
 
 // TestEventBrokerSingleton verifies event broker is a true singleton
@@ -48,7 +51,7 @@ func TestConcurrentSingletonAccess(t *testing.T) {
 	const numGoroutines = 100
 	var wg sync.WaitGroup
 
-	// Collect all database instances created concurrently
+	// Collect all instances created concurrently
 	dbInstances := make([]interface{}, numGoroutines)
 	brokerInstances := make([]interface{}, numGoroutines)
 	containerInstances := make([]interface{}, numGoroutines)
@@ -58,16 +61,13 @@ func TestConcurrentSingletonAccess(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 
-			// Initialize database
-			database.Init()
-			dbInstances[index] = database.Repo
+			// Get container (initializes database)
+			container, _ := components.GetInstance()
+			containerInstances[index] = container
+			dbInstances[index] = container.Database
 
 			// Get event broker
 			brokerInstances[index] = events.GetBroker()
-
-			// Get container
-			container, _ := components.GetInstance()
-			containerInstances[index] = container
 		}(i)
 	}
 
