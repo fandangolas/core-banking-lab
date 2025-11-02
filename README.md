@@ -55,7 +55,11 @@ go run cmd/api/main.go
 docker-compose up --build
 ```
 
-**API**: http://localhost:8080
+**Services:**
+- **API**: http://localhost:8080
+- **Kafka UI**: http://localhost:8090
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin123)
 
 ## API Example
 

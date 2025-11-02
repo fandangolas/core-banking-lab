@@ -129,12 +129,32 @@ services:
     ports:
       - "8090:8080"
     environment:
+      # Cluster configuration
       KAFKA_CLUSTERS_0_NAME: banking-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: PLAINTEXT
+
+      # UI configuration
       DYNAMIC_CONFIG_ENABLED: 'true'
+      AUTH_TYPE: 'DISABLED'  # No authentication for local dev
+
+      # Feature flags
+      KAFKA_CLUSTERS_0_READONLY: 'false'  # Allow topic creation and message production
+
+      # Consumer group monitoring
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+
+      # Pagination
+      KAFKA_CLUSTERS_0_MESSAGES_PAGESIZE: 100
     depends_on:
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # Banking API
   api:
