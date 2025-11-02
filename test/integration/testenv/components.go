@@ -5,6 +5,7 @@ import (
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/database/postgres"
 	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
 	"log"
 
@@ -13,10 +14,11 @@ import (
 
 // TestContainer is a lightweight version of the components.Container for testing
 type TestContainer struct {
-	Config      *config.Config
-	Database    database.Repository
-	EventBroker *events.Broker
-	Router      *gin.Engine
+	Config         *config.Config
+	Database       database.Repository
+	EventBroker    *events.Broker
+	EventPublisher *messaging.EventCapture
+	Router         *gin.Engine
 }
 
 // NewTestContainer creates a test container with minimal setup
@@ -63,14 +65,18 @@ func NewTestContainer() *TestContainer {
 	// Get the singleton event broker
 	eventBroker := events.GetBroker()
 
+	// Create event capture for testing
+	eventPublisher := messaging.NewEventCapture()
+
 	// Create router with middleware and routes
 	router := SetupTestRouter()
 
 	return &TestContainer{
-		Config:      cfg,
-		Database:    db,
-		EventBroker: eventBroker,
-		Router:      router,
+		Config:         cfg,
+		Database:       db,
+		EventBroker:    eventBroker,
+		EventPublisher: eventPublisher,
+		Router:         router,
 	}
 }
 
@@ -78,6 +84,9 @@ func NewTestContainer() *TestContainer {
 func (tc *TestContainer) Reset() {
 	if tc.Database != nil {
 		tc.Database.Reset()
+	}
+	if tc.EventPublisher != nil {
+		tc.EventPublisher.Reset()
 	}
 }
 
@@ -94,4 +103,9 @@ func (tc *TestContainer) GetDatabase() database.Repository {
 // GetEventBroker returns the test event broker
 func (tc *TestContainer) GetEventBroker() *events.Broker {
 	return tc.EventBroker
+}
+
+// GetEventPublisher returns the test event publisher (EventCapture)
+func (tc *TestContainer) GetEventPublisher() *messaging.EventCapture {
+	return tc.EventPublisher
 }
