@@ -6,18 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Go API (Main Service)
 - **Start the API server**: `go run cmd/api/main.go` (requires PostgreSQL, runs on localhost:8080)
-- **Run all tests**: `go test ./...` (requires PostgreSQL running)
+- **Run all tests**: `go test ./...` (testcontainers auto-manages PostgreSQL)
 - **Run unit tests**: `go test ./test/unit/...`
-- **Run integration tests**: `go test ./test/integration/...` (requires PostgreSQL)
+- **Run integration tests**: `go test ./test/integration/...` (testcontainers auto-manages PostgreSQL)
 - **Run specific test**: `go test ./test/integration/account -run TestTransferSuccess`
 - **Build**: `go build -o bank-api cmd/api/main.go`
 
 ### Database Operations
-- **Run PostgreSQL integration tests**: `./test-postgres.sh`
-- **Start PostgreSQL only**: `docker-compose up -d postgres`
+- **Integration tests**: Testcontainers automatically manages PostgreSQL containers - no manual setup required
+- **Start PostgreSQL for development**: `docker-compose up -d postgres`
 - **View PostgreSQL logs**: `docker-compose logs -f postgres`
 - **Connect to PostgreSQL**: `docker exec -it banking-postgres psql -U banking -d banking`
 - **Reset database**: `docker-compose down && docker-compose up -d postgres`
+
+### macOS Docker Setup
+On macOS with Docker Desktop, set the DOCKER_HOST environment variable before running tests:
+```bash
+export DOCKER_HOST=unix:///Users/$(whoami)/.docker/run/docker.sock
+```
 
 ### Docker Development
 - **Start full stack**: `docker-compose up --build` (PostgreSQL + API + Monitoring)
