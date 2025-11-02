@@ -7,6 +7,7 @@ import (
 	"bank-api/internal/pkg/telemetry"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,7 +37,7 @@ func Withdraw(c *gin.Context) {
 		metrics.RecordBankingOperation("withdraw", "error")
 
 		// Check if account not found or insufficient balance
-		if err.Error() == "account not found" || err.Error() == "first account not found: account not found" {
+		if strings.Contains(err.Error(), "account not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Conta não encontrada"})
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Saldo insuficiente"})

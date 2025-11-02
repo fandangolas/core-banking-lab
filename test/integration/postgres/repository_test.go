@@ -199,9 +199,9 @@ func TestAccountTimestamps(t *testing.T) {
 	account, found := repo.GetAccount(accountID)
 	require.True(t, found)
 
-	// Verify timestamp is within expected range
-	assert.True(t, account.CreatedAt.After(before.Add(-time.Second)))
-	assert.True(t, account.CreatedAt.Before(after.Add(time.Second)))
+	// Verify timestamp is within expected range (allow 1 second buffer for test execution time)
+	assert.True(t, account.CreatedAt.Unix() >= before.Unix()-1, "CreatedAt should be >= before timestamp")
+	assert.True(t, account.CreatedAt.Unix() <= after.Unix()+1, "CreatedAt should be <= after timestamp")
 }
 
 // TestMultipleAccounts tests creating and retrieving multiple accounts

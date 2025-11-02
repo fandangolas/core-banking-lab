@@ -97,7 +97,7 @@ func (r *PostgresRepository) CreateAccount(owner string) int {
 	`
 
 	var accountID int
-	now := time.Now()
+	now := time.Now().UTC() // Use UTC to avoid timezone issues with TIMESTAMP (without timezone)
 
 	err := r.pool.QueryRow(ctx, query, owner, 0, now, now).Scan(&accountID)
 	if err != nil {

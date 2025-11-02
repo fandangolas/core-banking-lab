@@ -9,6 +9,7 @@ import (
 	"bank-api/internal/pkg/telemetry"
 	"bank-api/internal/pkg/validation"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -68,7 +69,7 @@ func Transfer(c *gin.Context) {
 		metrics.RecordBankingOperation("transfer", "error")
 
 		// Check error type
-		if err.Error() == "insufficient balance" {
+		if strings.Contains(err.Error(), "insufficient balance") {
 			apiErr := errors.NewInsufficientFundsError()
 			logging.Warn("Transfer failed: insufficient funds", map[string]interface{}{
 				"from_account_id": req.FromID,
