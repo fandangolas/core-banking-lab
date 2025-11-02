@@ -4,6 +4,7 @@ import (
 	"bank-api/internal/domain/models"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -98,6 +99,7 @@ func Transfer(c *gin.Context) {
 	metrics.RecordAccountBalance(float64(from.Balance))
 	metrics.RecordAccountBalance(float64(to.Balance))
 
+	// Publish legacy event (for backward compatibility)
 	events.GetBroker().Publish(models.TransactionEvent{
 		Type:        "transfer",
 		FromID:      from.Id,
@@ -107,6 +109,24 @@ func Transfer(c *gin.Context) {
 		ToBalance:   to.Balance,
 		Timestamp:   time.Now(),
 	})
+
+	// Publish transfer completed event to Kafka
+	publisher := GetEventPublisher(c)
+	event := messaging.TransferCompletedEvent{
+		FromAccountID:    from.Id,
+		ToAccountID:      to.Id,
+		Amount:           req.Amount,
+		FromBalanceAfter: from.Balance,
+		ToBalanceAfter:   to.Balance,
+		Timestamp:        time.Now(),
+	}
+	if err := publisher.PublishTransferCompleted(event); err != nil {
+		logging.Error("Failed to publish transfer completed event", err, map[string]interface{}{
+			"from_account_id": from.Id,
+			"to_account_id":   to.Id,
+			"amount":          req.Amount,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Transferência realizada com sucesso",

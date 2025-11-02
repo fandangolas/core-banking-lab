@@ -5,6 +5,8 @@ import (
 	"bank-api/internal/domain/models"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/infrastructure/messaging"
+	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
 	"net/http"
 	"strconv"
@@ -50,6 +52,7 @@ func Deposit(c *gin.Context) {
 	metrics.RecordBankingOperation("deposit", "success")
 	metrics.RecordAccountBalance(float64(balance))
 
+	// Publish legacy event (for backward compatibility)
 	events.GetBroker().Publish(models.TransactionEvent{
 		Type:      "deposit",
 		AccountID: account.Id,
@@ -57,6 +60,21 @@ func Deposit(c *gin.Context) {
 		Balance:   balance,
 		Timestamp: time.Now(),
 	})
+
+	// Publish deposit completed event to Kafka
+	publisher := GetEventPublisher(c)
+	event := messaging.DepositCompletedEvent{
+		AccountID:    account.Id,
+		Amount:       req.Amount,
+		BalanceAfter: balance,
+		Timestamp:    time.Now(),
+	}
+	if err := publisher.PublishDepositCompleted(event); err != nil {
+		logging.Error("Failed to publish deposit completed event", err, map[string]interface{}{
+			"account_id": account.Id,
+			"amount":     req.Amount,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      account.Id,

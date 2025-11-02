@@ -4,6 +4,8 @@ import (
 	"bank-api/internal/domain/models"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
+	"bank-api/internal/infrastructure/messaging"
+	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
 	"net/http"
 	"strconv"
@@ -51,6 +53,7 @@ func Withdraw(c *gin.Context) {
 	metrics.RecordBankingOperation("withdraw", "success")
 	metrics.RecordAccountBalance(float64(balance))
 
+	// Publish legacy event (for backward compatibility)
 	events.GetBroker().Publish(models.TransactionEvent{
 		Type:      "withdraw",
 		AccountID: account.Id,
@@ -58,6 +61,21 @@ func Withdraw(c *gin.Context) {
 		Balance:   balance,
 		Timestamp: time.Now(),
 	})
+
+	// Publish withdrawal completed event to Kafka
+	publisher := GetEventPublisher(c)
+	event := messaging.WithdrawalCompletedEvent{
+		AccountID:    account.Id,
+		Amount:       req.Amount,
+		BalanceAfter: balance,
+		Timestamp:    time.Now(),
+	}
+	if err := publisher.PublishWithdrawalCompleted(event); err != nil {
+		logging.Error("Failed to publish withdrawal completed event", err, map[string]interface{}{
+			"account_id": account.Id,
+			"amount":     req.Amount,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Saque realizado com sucesso",

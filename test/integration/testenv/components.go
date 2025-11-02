@@ -68,8 +68,8 @@ func NewTestContainer() *TestContainer {
 	// Create event capture for testing
 	eventPublisher := messaging.NewEventCapture()
 
-	// Create router with middleware and routes
-	router := SetupTestRouter()
+	// Create router with event publisher
+	router := SetupTestRouterWithEventPublisher(eventPublisher)
 
 	return &TestContainer{
 		Config:         cfg,

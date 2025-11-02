@@ -3,12 +3,14 @@ package handlers
 import (
 	"bank-api/internal/domain/account"
 	"bank-api/internal/infrastructure/database"
+	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
 	"bank-api/internal/pkg/validation"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,6 +45,21 @@ func CreateAccount(ctx *gin.Context) {
 
 	// Record metrics
 	metrics.RecordAccountCreation()
+
+	// Publish account created event
+	publisher := GetEventPublisher(ctx)
+	event := messaging.AccountCreatedEvent{
+		AccountID: id,
+		Owner:     req.Owner,
+		Timestamp: time.Now(),
+	}
+	if err := publisher.PublishAccountCreated(event); err != nil {
+		logging.Error("Failed to publish account created event", err, map[string]interface{}{
+			"account_id": id,
+			"owner":      req.Owner,
+		})
+		// Don't fail the request if event publishing fails (graceful degradation)
+	}
 
 	logging.Info("Account created successfully", map[string]interface{}{
 		"account_id": id,

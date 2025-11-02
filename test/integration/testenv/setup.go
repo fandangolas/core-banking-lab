@@ -4,6 +4,7 @@ import (
 	"bank-api/internal/api/middleware"
 	"bank-api/internal/api/routes"
 	"bank-api/internal/config"
+	"bank-api/internal/infrastructure/messaging"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,6 +32,32 @@ func SetupTestRouter() *gin.Engine {
 
 	// Register routes
 	routes.RegisterRoutes(router)
+
+	return router
+}
+
+// SetupTestRouterWithEventPublisher creates a router with event publisher middleware
+func SetupTestRouterWithEventPublisher(publisher messaging.EventPublisher) *gin.Engine {
+	// Set Gin to test mode
+	gin.SetMode(gin.TestMode)
+
+	// Create a new router for each test
+	router := gin.Default()
+
+	// Create minimal config for CORS
+	cfg := &config.Config{
+		CORS: config.CORSConfig{
+			AllowOrigins: []string{"*"},
+			AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowHeaders: []string{"*"},
+		},
+	}
+
+	// Apply middleware
+	router.Use(middleware.CORS(cfg))
+
+	// Register routes with event publisher
+	routes.RegisterRoutesWithEventPublisher(router, publisher)
 
 	return router
 }
