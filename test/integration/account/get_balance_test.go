@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"encoding/json"
 	"net/http"
@@ -13,8 +12,8 @@ import (
 )
 
 func TestGetBalance(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	accountID := testenv.CreateAccount(t, router, "Nico")
 	testenv.Deposit(t, router, accountID, 7500)
@@ -24,8 +23,8 @@ func TestGetBalance(t *testing.T) {
 }
 
 func TestGetBalanceNonexistentAccount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	req := httptest.NewRequest("GET", "/accounts/999/balance", nil)
 	resp := httptest.NewRecorder()

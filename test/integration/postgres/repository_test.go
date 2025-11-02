@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"bank-api/internal/infrastructure/database/postgres"
+	"bank-api/test/integration/testenv"
 	"fmt"
 	"sync"
 	"testing"
@@ -11,26 +12,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testRepo     *postgres.PostgresRepository
-	testRepoOnce sync.Once
-)
-
-// getTestRepository creates or returns a singleton test repository
+// getTestRepository creates a test repository using testcontainers
 func getTestRepository(t *testing.T) *postgres.PostgresRepository {
-	testRepoOnce.Do(func() {
-		cfg := postgres.NewConfigFromEnv()
+	// Setup PostgreSQL testcontainer and set environment variables
+	testenv.SetupPostgresContainerWithEnv(t)
 
-		repo, err := postgres.NewPostgresRepository(cfg)
-		require.NoError(t, err, "Failed to create test repository")
+	// Create repository using config from environment (set by testcontainer)
+	cfg := postgres.NewConfigFromEnv()
+	repo, err := postgres.NewPostgresRepository(cfg)
+	require.NoError(t, err, "Failed to create test repository")
 
-		testRepo = repo
+	// Clean database before test
+	repo.Reset()
 
-		// Clean database before tests
-		testRepo.Reset()
-	})
-
-	return testRepo
+	return repo
 }
 
 // TestCreateAccount tests account creation

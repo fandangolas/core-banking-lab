@@ -4,32 +4,15 @@ import (
 	"bank-api/internal/api/middleware"
 	"bank-api/internal/api/routes"
 	"bank-api/internal/config"
-	"bank-api/internal/infrastructure/database"
-	"bank-api/internal/infrastructure/database/postgres"
-	"log"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	setupOnce sync.Once
-)
-
 // SetupTestRouter creates a new router for testing with all routes and middleware
+// Note: Database initialization is now handled per-test using testcontainers
 func SetupTestRouter() *gin.Engine {
-	// Ensure database is initialized only once across all tests
-	setupOnce.Do(func() {
-		gin.SetMode(gin.TestMode)
-
-		// Initialize PostgreSQL repository for tests
-		dbConfig := postgres.NewConfigFromEnv()
-		repo, err := postgres.NewPostgresRepository(dbConfig)
-		if err != nil {
-			log.Fatalf("Failed to initialize test database: %v", err)
-		}
-		database.Repo = repo
-	})
+	// Set Gin to test mode
+	gin.SetMode(gin.TestMode)
 
 	// Create a new router for each test
 	router := gin.Default()

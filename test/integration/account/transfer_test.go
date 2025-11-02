@@ -1,7 +1,6 @@
 package account
 
 import (
-	"bank-api/internal/infrastructure/database"
 	"bank-api/test/integration/testenv"
 	"bytes"
 	"encoding/json"
@@ -14,8 +13,8 @@ import (
 )
 
 func TestTransferSuccess(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	from := testenv.CreateAccount(t, router, "From")
 	to := testenv.CreateAccount(t, router, "To")
@@ -43,8 +42,8 @@ func TestTransferSuccess(t *testing.T) {
 }
 
 func TestTransferNonexistentAccount(t *testing.T) {
+	testenv.SetupIntegrationTest(t)
 	router := testenv.SetupRouter()
-	defer database.Repo.Reset()
 
 	from := testenv.CreateAccount(t, router, "From")
 	testenv.Deposit(t, router, from, 100)

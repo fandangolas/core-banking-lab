@@ -20,6 +20,8 @@ type TestContainer struct {
 }
 
 // NewTestContainer creates a test container with minimal setup
+// Note: This function expects the database to be already initialized via testcontainers
+// Call SetupPostgresContainerWithEnv(t) before calling this function
 func NewTestContainer() *TestContainer {
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
@@ -31,7 +33,7 @@ func NewTestContainer() *TestContainer {
 			Host: "localhost",
 		},
 		Database: config.DatabaseConfig{
-			Type: "inmemory",
+			Type: "postgres",
 		},
 		Logging: config.LoggingConfig{
 			Level:  "error",
@@ -49,6 +51,7 @@ func NewTestContainer() *TestContainer {
 	logging.Init(cfg)
 
 	// Initialize PostgreSQL repository for tests
+	// Environment variables should be set by SetupPostgresContainerWithEnv
 	dbConfig := postgres.NewConfigFromEnv()
 	repo, err := postgres.NewPostgresRepository(dbConfig)
 	if err != nil {

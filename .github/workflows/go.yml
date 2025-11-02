@@ -11,6 +11,10 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+
+    # Note: testcontainers-go will automatically manage PostgreSQL containers
+    # Docker is available in GitHub Actions runners by default
+
     steps:
     - uses: actions/checkout@v4
 
