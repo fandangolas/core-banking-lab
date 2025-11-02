@@ -3,7 +3,6 @@ package handlers
 import (
 	"bank-api/internal/domain/account"
 	"bank-api/internal/domain/models"
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
@@ -85,12 +84,4 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 			"balance": balance,
 		})
 	}
-}
-
-// Legacy function for backward compatibility - can be removed after migration
-func Deposit(c *gin.Context) {
-	MakeDepositHandler(&simpleContainer{
-		db:        database.Repo,
-		publisher: messaging.NewNoOpEventPublisher(),
-	})(c)
 }

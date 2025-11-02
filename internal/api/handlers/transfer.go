@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bank-api/internal/domain/models"
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/errors"
@@ -141,13 +140,4 @@ func MakeTransferHandler(container HandlerDependencies) gin.HandlerFunc {
 			"transferred":  req.Amount,
 		})
 	}
-}
-
-// Legacy function for backward compatibility - can be removed after migration
-func Transfer(c *gin.Context) {
-	// This will be removed once all routes are migrated
-	MakeTransferHandler(&simpleContainer{
-		db:        database.Repo,
-		publisher: messaging.NewNoOpEventPublisher(),
-	})(c)
 }

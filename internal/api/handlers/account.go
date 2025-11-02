@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bank-api/internal/domain/account"
-	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
@@ -127,32 +126,4 @@ func MakeGetBalanceHandler(container HandlerDependencies) gin.HandlerFunc {
 			"balance": balance,
 		})
 	}
-}
-
-// simpleContainer is a simple implementation of HandlerDependencies for legacy functions
-type simpleContainer struct {
-	db        database.Repository
-	publisher messaging.EventPublisher
-}
-
-func (s *simpleContainer) GetDatabase() database.Repository {
-	return s.db
-}
-
-func (s *simpleContainer) GetEventPublisher() messaging.EventPublisher {
-	return s.publisher
-}
-
-// Legacy functions for backward compatibility - can be removed after migration
-func CreateAccount(ctx *gin.Context) {
-	MakeCreateAccountHandler(&simpleContainer{
-		db:        database.Repo,
-		publisher: messaging.NewNoOpEventPublisher(),
-	})(ctx)
-}
-
-func GetBalance(c *gin.Context) {
-	MakeGetBalanceHandler(&simpleContainer{
-		db: database.Repo,
-	})(c)
 }
