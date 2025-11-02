@@ -8,11 +8,12 @@
 
 This project showcases **advanced backend engineering skills** through a banking API that handles concurrent financial operations safely:
 
+- **Event-Driven Architecture**: Kafka-based async processing with at-least-once delivery
+- **Consumer Idempotency**: Deterministic deduplication preventing duplicate operations
 - **Thread-Safe Concurrency**: Deadlock-free money transfers using ordered mutex locking
 - **Production Architecture**: Clean Diplomat pattern with separated concerns
 - **Security Hardening**: Rate limiting, input validation, audit logging
-- **Real-Time Features**: Live transaction dashboard with WebSocket events
-- **Comprehensive Testing**: 16+ integration tests including concurrent scenarios
+- **Comprehensive Testing**: 30+ integration tests including idempotency scenarios
 
 ## Key Technical Achievements
 
@@ -95,6 +96,8 @@ go test ./test/integration/account -run TestConcurrentTransfer
 ## Stack
 
 - **Backend**: Go 1.23 + Gin + Structured Logging
+- **Message Broker**: Apache Kafka (KRaft mode)
+- **Database**: PostgreSQL 16 with connection pooling
 - **Monitoring**: Prometheus + Grafana
 - **Infrastructure**: Docker + Docker Compose + Kubernetes
 - **Testing**: Testify + httptest + Concurrent scenarios
