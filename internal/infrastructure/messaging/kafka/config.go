@@ -47,6 +47,11 @@ func (c *Config) ToSaramaConfig() (*sarama.Config, error) {
 	config.Producer.Retry.Max = c.MaxRetries
 	config.Producer.Retry.Backoff = c.RetryBackoff
 
+	// When idempotence is enabled, Net.MaxOpenRequests must be 1
+	if c.EnableIdempotence {
+		config.Net.MaxOpenRequests = 1
+	}
+
 	// Set required acks
 	switch c.RequiredAcks {
 	case "all", "-1":
