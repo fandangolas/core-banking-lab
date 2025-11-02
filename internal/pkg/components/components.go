@@ -6,7 +6,6 @@ import (
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
 	"bank-api/internal/infrastructure/database/postgres"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/infrastructure/messaging/kafka"
 	"bank-api/internal/pkg/logging"
@@ -27,7 +26,6 @@ type Container struct {
 	Config         *config.Config
 	Logger         *logging.Logger
 	Database       database.Repository
-	EventBroker    *events.Broker
 	EventPublisher messaging.EventPublisher
 	Router         *gin.Engine
 	Server         *http.Server
@@ -71,11 +69,6 @@ func newContainer() (*Container, error) {
 	// Initialize database
 	if err := container.initDatabase(); err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
-	}
-
-	// Initialize event broker (legacy)
-	if err := container.initEventBroker(); err != nil {
-		return nil, fmt.Errorf("failed to initialize event broker: %w", err)
 	}
 
 	// Initialize Kafka event publisher
@@ -130,15 +123,6 @@ func (c *Container) initDatabase() error {
 		"port":     dbConfig.Port,
 		"database": dbConfig.Database,
 	})
-	return nil
-}
-
-// initEventBroker sets up the event broadcasting system (legacy)
-func (c *Container) initEventBroker() error {
-	// Get the singleton event broker instance
-	c.EventBroker = events.GetBroker()
-
-	logging.Info("Event broker initialized", nil)
 	return nil
 }
 
@@ -264,11 +248,6 @@ func (c *Container) Shutdown(ctx context.Context) error {
 // GetDatabase returns the database repository
 func (c *Container) GetDatabase() database.Repository {
 	return c.Database
-}
-
-// GetEventBroker returns the event broker
-func (c *Container) GetEventBroker() *events.Broker {
-	return c.EventBroker
 }
 
 // GetConfig returns the configuration

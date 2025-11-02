@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bank-api/internal/domain/models"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -56,15 +54,6 @@ func MakeWithdrawHandler(container HandlerDependencies) gin.HandlerFunc {
 		// Record successful operation and metrics
 		metrics.RecordBankingOperation("withdraw", "success")
 		metrics.RecordAccountBalance(float64(balance))
-
-		// Publish legacy event (for backward compatibility)
-		events.GetBroker().Publish(models.TransactionEvent{
-			Type:      "withdraw",
-			AccountID: account.Id,
-			Amount:    req.Amount,
-			Balance:   balance,
-			Timestamp: time.Now(),
-		})
 
 		// Publish withdrawal completed event to Kafka
 		event := messaging.WithdrawalCompletedEvent{

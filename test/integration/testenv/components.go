@@ -3,7 +3,6 @@ package testenv
 import (
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
 	"log"
@@ -15,7 +14,6 @@ import (
 type TestContainer struct {
 	Config         *config.Config
 	Database       database.Repository
-	EventBroker    *events.Broker
 	EventPublisher *messaging.EventCapture
 	Router         *gin.Engine
 }
@@ -58,9 +56,6 @@ func NewTestContainer() *TestContainer {
 	}
 	db := database.Repo
 
-	// Get the singleton event broker
-	eventBroker := events.GetBroker()
-
 	// Create event capture for testing
 	eventPublisher := messaging.NewEventCapture()
 
@@ -70,7 +65,6 @@ func NewTestContainer() *TestContainer {
 	return &TestContainer{
 		Config:         cfg,
 		Database:       db,
-		EventBroker:    eventBroker,
 		EventPublisher: eventPublisher,
 		Router:         router,
 	}
@@ -94,11 +88,6 @@ func (tc *TestContainer) GetRouter() *gin.Engine {
 // GetDatabase returns the test database
 func (tc *TestContainer) GetDatabase() database.Repository {
 	return tc.Database
-}
-
-// GetEventBroker returns the test event broker
-func (tc *TestContainer) GetEventBroker() *events.Broker {
-	return tc.EventBroker
 }
 
 // GetEventPublisher returns the test event publisher (EventCapture)

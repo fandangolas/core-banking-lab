@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bank-api/internal/domain/models"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/errors"
 	"bank-api/internal/pkg/logging"
@@ -102,17 +100,6 @@ func MakeTransferHandler(container HandlerDependencies) gin.HandlerFunc {
 		metrics.RecordTransferAmount(float64(req.Amount))
 		metrics.RecordAccountBalance(float64(from.Balance))
 		metrics.RecordAccountBalance(float64(to.Balance))
-
-		// Publish legacy event (for backward compatibility)
-		events.GetBroker().Publish(models.TransactionEvent{
-			Type:        "transfer",
-			FromID:      from.Id,
-			ToID:        to.Id,
-			Amount:      req.Amount,
-			FromBalance: from.Balance,
-			ToBalance:   to.Balance,
-			Timestamp:   time.Now(),
-		})
 
 		// Publish transfer completed event to Kafka
 		event := messaging.TransferCompletedEvent{

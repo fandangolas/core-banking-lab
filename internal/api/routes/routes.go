@@ -23,5 +23,4 @@ func RegisterRoutes(router *gin.Engine, container handlers.HandlerDependencies) 
 	// System endpoints
 	router.GET("/metrics", handlers.GetMetrics)
 	router.GET("/prometheus", handlers.PrometheusMetrics)
-	router.GET("/events", handlers.Events)
 }

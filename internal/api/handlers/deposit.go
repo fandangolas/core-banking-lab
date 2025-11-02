@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"bank-api/internal/domain/account"
-	"bank-api/internal/domain/models"
-	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -55,15 +53,6 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 		// Record successful operation and metrics
 		metrics.RecordBankingOperation("deposit", "success")
 		metrics.RecordAccountBalance(float64(balance))
-
-		// Publish legacy event (for backward compatibility)
-		events.GetBroker().Publish(models.TransactionEvent{
-			Type:      "deposit",
-			AccountID: account.Id,
-			Amount:    req.Amount,
-			Balance:   balance,
-			Timestamp: time.Now(),
-		})
 
 		// Publish deposit completed event to Kafka
 		event := messaging.DepositCompletedEvent{
