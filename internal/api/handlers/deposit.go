@@ -17,6 +17,13 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 	db := container.GetDatabase()
 	publisher := container.GetEventPublisher()
 
+	// TODO: Refactor to event-driven architecture (fire-and-forget pattern)
+	// Current: Synchronous - DB update then Kafka publish
+	// Future: Async - Publish DepositRequestedEvent to Kafka (202 Accepted),
+	//         Kafka consumer processes event, updates DB, publishes DepositCompletedEvent
+	// Benefits: Better scalability, failure isolation, async processing
+	// Related: withdraw, transfer handlers could follow same pattern
+
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
