@@ -3,12 +3,13 @@ package messaging
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"sync"
 	"time"
 
-	"bank-api/internal/domain/account"
 	"bank-api/internal/infrastructure/database"
+	"bank-api/internal/infrastructure/database/postgres"
 	"bank-api/internal/infrastructure/messaging/kafka"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
@@ -170,7 +171,7 @@ func (h *depositConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSessio
 	}
 }
 
-// processDepositRequest processes a single deposit request event
+// processDepositRequest processes a single deposit request event with idempotency
 func (h *depositConsumerHandler) processDepositRequest(message *sarama.ConsumerMessage) error {
 	// Deserialize the event
 	var event DepositRequestedEvent
@@ -181,52 +182,53 @@ func (h *depositConsumerHandler) processDepositRequest(message *sarama.ConsumerM
 		return err
 	}
 
-	log.Printf("Processing deposit request: operation_id=%s, account_id=%d, amount=%d",
-		event.OperationID, event.AccountID, event.Amount)
+	log.Printf("Processing deposit request: operation_id=%s, idempotency_key=%s, account_id=%d, amount=%d",
+		event.OperationID, event.IdempotencyKey, event.AccountID, event.Amount)
 
-	// Get the account
-	acc, ok := h.db.GetAccount(event.AccountID)
-	if !ok {
-		// Publish transaction failed event
-		failedEvent := TransactionFailedEvent{
-			TransactionType: "deposit",
-			AccountID:       event.AccountID,
-			Amount:          event.Amount,
-			ErrorMessage:    "Account not found",
-			Timestamp:       time.Now(),
+	// Perform atomic deposit with idempotency check
+	// This is THE KEY OPERATION that makes the consumer idempotent!
+	acc, err := h.db.AtomicDepositWithIdempotency(event.AccountID, event.Amount, event.IdempotencyKey)
+
+	if err != nil {
+		// Check if this is a duplicate operation (expected with at-least-once)
+		if errors.Is(err, postgres.ErrDuplicateOperation) {
+			log.Printf("Duplicate operation detected (idempotent): idempotency_key=%s, account_id=%d - skipping",
+				event.IdempotencyKey, event.AccountID)
+			metrics.RecordBankingOperation("deposit", "duplicate")
+			return nil // Success! This is idempotent behavior
 		}
-		if err := h.publisher.PublishTransactionFailed(failedEvent); err != nil {
-			logging.Error("Failed to publish transaction failed event", err, map[string]interface{}{
-				"operation_id": event.OperationID,
-			})
+
+		// Check if account doesn't exist
+		if errors.Is(err, postgres.ErrAccountNotFound) {
+			// Publish transaction failed event
+			failedEvent := TransactionFailedEvent{
+				TransactionType: "deposit",
+				AccountID:       event.AccountID,
+				Amount:          event.Amount,
+				ErrorMessage:    "Account not found",
+				Timestamp:       time.Now(),
+			}
+			if err := h.publisher.PublishTransactionFailed(failedEvent); err != nil {
+				logging.Error("Failed to publish transaction failed event", err, map[string]interface{}{
+					"operation_id": event.OperationID,
+				})
+			}
+			metrics.RecordBankingOperation("deposit", "error")
+			return nil // Don't retry - account doesn't exist
 		}
+
+		// Real error - log and retry
+		logging.Error("Failed to process deposit", err, map[string]interface{}{
+			"operation_id":    event.OperationID,
+			"idempotency_key": event.IdempotencyKey,
+			"account_id":      event.AccountID,
+		})
 		metrics.RecordBankingOperation("deposit", "error")
-		return nil // Don't retry - account doesn't exist
+		return err // Retry on database failure
 	}
 
-	// Perform the deposit
-	if err := domain.AddAmount(acc, event.Amount); err != nil {
-		// Publish transaction failed event
-		failedEvent := TransactionFailedEvent{
-			TransactionType: "deposit",
-			AccountID:       event.AccountID,
-			Amount:          event.Amount,
-			ErrorMessage:    err.Error(),
-			Timestamp:       time.Now(),
-		}
-		if err := h.publisher.PublishTransactionFailed(failedEvent); err != nil {
-			logging.Error("Failed to publish transaction failed event", err, map[string]interface{}{
-				"operation_id": event.OperationID,
-			})
-		}
-		metrics.RecordBankingOperation("deposit", "error")
-		return nil // Don't retry - business logic error
-	}
-
-	// Update the account in the database
-	h.db.UpdateAccount(acc)
-
-	balance := domain.GetBalance(acc)
+	// Success! Deposit processed atomically
+	balance := acc.Balance
 
 	// Record successful operation and metrics
 	metrics.RecordBankingOperation("deposit", "success")
@@ -247,8 +249,8 @@ func (h *depositConsumerHandler) processDepositRequest(message *sarama.ConsumerM
 		return err // Retry on publish failure
 	}
 
-	log.Printf("Deposit processed successfully: operation_id=%s, account_id=%d, new_balance=%d",
-		event.OperationID, event.AccountID, balance)
+	log.Printf("Deposit processed successfully: operation_id=%s, idempotency_key=%s, account_id=%d, new_balance=%d",
+		event.OperationID, event.IdempotencyKey, event.AccountID, balance)
 
 	return nil
 }

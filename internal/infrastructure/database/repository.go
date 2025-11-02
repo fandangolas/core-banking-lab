@@ -15,6 +15,10 @@ type Repository interface {
 	// Atomic operations for concurrency safety
 	AtomicWithdraw(accountID int, amount int) (*models.Account, error)
 	AtomicTransfer(fromID int, toID int, amount int) (*models.Account, *models.Account, error)
+
+	// Atomic operation with idempotency check
+	// Returns ErrDuplicateOperation if idempotency key already exists
+	AtomicDepositWithIdempotency(accountID int, amount int, idempotencyKey string) (*models.Account, error)
 }
 
 var (

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bank-api/internal/infrastructure/messaging"
+	"bank-api/internal/pkg/idempotency"
 	"bank-api/internal/pkg/logging"
 	"bank-api/internal/pkg/telemetry"
 	"net/http"
@@ -46,15 +47,20 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 			return
 		}
 
-		// Generate unique operation ID for tracking
+		// Generate unique operation ID for tracking (legacy)
 		operationID := uuid.New().String()
+
+		// Generate deterministic idempotency key (no DB query!)
+		// Same request → same key → consumer deduplicates
+		idempotencyKey := idempotency.GenerateKey("deposit", id, req.Amount)
 
 		// Publish deposit request event to Kafka (fire-and-forget)
 		event := messaging.DepositRequestedEvent{
-			OperationID: operationID,
-			AccountID:   id,
-			Amount:      req.Amount,
-			Timestamp:   time.Now(),
+			OperationID:    operationID,
+			IdempotencyKey: idempotencyKey,
+			AccountID:      id,
+			Amount:         req.Amount,
+			Timestamp:      time.Now(),
 		}
 
 		if err := publisher.PublishDepositRequested(event); err != nil {
