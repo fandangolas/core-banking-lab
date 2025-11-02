@@ -61,6 +61,21 @@ func Deposit(t *testing.T, r *gin.Engine, id int, amount int) {
 	}
 }
 
+func Withdraw(t *testing.T, r *gin.Engine, id int, amount int) {
+	body := map[string]int{"amount": amount}
+	jsonBody, _ := json.Marshal(body)
+
+	req := httptest.NewRequest("POST", "/accounts/"+strconv.Itoa(id)+"/withdraw", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	r.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("erro no saque: %d", resp.Code)
+	}
+}
+
 // AssertHasError checks if the response has an error message in either the new format (message) or old format (error)
 func AssertHasError(t *testing.T, result map[string]interface{}) {
 	if message, ok := result["message"]; ok {

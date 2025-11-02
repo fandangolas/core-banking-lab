@@ -3,7 +3,6 @@ package testenv
 import (
 	"bank-api/internal/config"
 	"bank-api/internal/infrastructure/database"
-	"bank-api/internal/infrastructure/database/postgres"
 	"bank-api/internal/infrastructure/events"
 	"bank-api/internal/infrastructure/messaging"
 	"bank-api/internal/pkg/logging"
@@ -22,8 +21,8 @@ type TestContainer struct {
 }
 
 // NewTestContainer creates a test container with minimal setup
-// Note: This function expects the database to be already initialized via testcontainers
-// Call SetupPostgresContainerWithEnv(t) before calling this function
+// Note: This function expects the database to be already initialized via SetupIntegrationTest(t)
+// Call SetupIntegrationTest(t) before calling this function to ensure database.Repo is set
 func NewTestContainer() *TestContainer {
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
@@ -52,15 +51,12 @@ func NewTestContainer() *TestContainer {
 	// Initialize logging in test mode
 	logging.Init(cfg)
 
-	// Initialize PostgreSQL repository for tests
-	// Environment variables should be set by SetupPostgresContainerWithEnv
-	dbConfig := postgres.NewConfigFromEnv()
-	repo, err := postgres.NewPostgresRepository(dbConfig)
-	if err != nil {
-		log.Fatalf("Failed to initialize test database: %v", err)
+	// Use the already-initialized database repository from SetupIntegrationTest
+	// This avoids creating duplicate connections
+	if database.Repo == nil {
+		log.Fatal("Database repository not initialized. Call SetupIntegrationTest(t) before NewTestContainer()")
 	}
-	database.Repo = repo
-	db := repo
+	db := database.Repo
 
 	// Get the singleton event broker
 	eventBroker := events.GetBroker()
