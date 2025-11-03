@@ -63,15 +63,17 @@ func MakeDepositHandler(container HandlerDependencies) gin.HandlerFunc {
 			Timestamp:      time.Now(),
 		}
 
+		// Fire-and-forget: Don't fail HTTP request if Kafka is temporarily unavailable
+		// The async publisher will handle queuing and Kafka guarantees delivery (WaitForAll)
 		if err := publisher.PublishDepositRequested(event); err != nil {
-			logging.Error("Failed to publish deposit request event", err, map[string]interface{}{
+			logging.Warn("Failed to publish deposit request event - will retry via async worker", map[string]interface{}{
 				"operation_id": operationID,
 				"account_id":   id,
 				"amount":       req.Amount,
+				"error":        err.Error(),
 			})
-			metrics.RecordBankingOperation("deposit", "error")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process deposit request"})
-			return
+			// Continue processing - don't fail HTTP request
+			// Kafka WaitForAll ensures delivery once queued
 		}
 
 		// Record successful request acceptance

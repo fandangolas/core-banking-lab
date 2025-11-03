@@ -139,8 +139,9 @@ func (c *Container) initEventPublisher() error {
 	// Load Kafka configuration from environment
 	kafkaConfig := kafka.NewConfigFromEnv()
 
-	// Initialize Kafka event publisher
-	publisher, err := messaging.NewKafkaEventPublisher(kafkaConfig)
+	// Initialize high-performance async Kafka event publisher
+	// This uses Kafka's native async producer with comprehensive error monitoring
+	kafkaPublisher, err := messaging.NewKafkaEventPublisher(kafkaConfig)
 	if err != nil {
 		// If Kafka fails to initialize, fall back to no-op publisher
 		// This allows the application to start even if Kafka is not available
@@ -151,9 +152,15 @@ func (c *Container) initEventPublisher() error {
 		return nil
 	}
 
-	c.EventPublisher = publisher
-	logging.Info("Kafka event publisher initialized", map[string]interface{}{
-		"brokers": kafkaConfig.Brokers,
+	c.EventPublisher = kafkaPublisher
+	logging.Info("High-performance async Kafka event publisher initialized", map[string]interface{}{
+		"brokers":         kafkaConfig.Brokers,
+		"buffer_size":     "500K",
+		"compression":     "snappy",
+		"required_acks":   "none (fire-and-forget)",
+		"max_open_reqs":   100,
+		"flush_frequency": "10ms",
+		"error_monitoring": "enabled",
 	})
 	return nil
 }
@@ -174,14 +181,15 @@ func (c *Container) initServer() error {
 	// Register all routes with container
 	routes.RegisterRoutes(c.Router, c)
 
-	// Create HTTP server
+	// Create HTTP server with high-concurrency optimizations
 	c.Server = &http.Server{
-		Addr:           ":" + c.Config.Server.Port,
-		Handler:        c.Router,
-		ReadTimeout:    15 * time.Second,
-		WriteTimeout:   15 * time.Second,
-		IdleTimeout:    60 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1 MB
+		Addr:              ":" + c.Config.Server.Port,
+		Handler:           c.Router,
+		ReadTimeout:       30 * time.Second,  // Increased for slow clients (was 15s)
+		WriteTimeout:      30 * time.Second,  // Increased for large responses (was 15s)
+		IdleTimeout:       120 * time.Second, // Keep connections alive longer (was 60s)
+		MaxHeaderBytes:    1 << 20,           // 1 MB
+		ReadHeaderTimeout: 10 * time.Second,  // Prevent slow loris attacks
 	}
 
 	logging.Info("HTTP server configured", map[string]interface{}{

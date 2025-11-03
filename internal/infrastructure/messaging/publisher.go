@@ -19,16 +19,16 @@ type EventPublisher interface {
 	IsHealthy() bool
 }
 
-// KafkaEventPublisher implements EventPublisher using Kafka
+// KafkaEventPublisher implements EventPublisher using Kafka with async producer
 type KafkaEventPublisher struct {
-	producer *kafka.Producer
+	producer *kafka.AsyncProducer
 }
 
-// NewKafkaEventPublisher creates a new Kafka event publisher
+// NewKafkaEventPublisher creates a new high-performance async Kafka event publisher
 func NewKafkaEventPublisher(config *kafka.Config) (*KafkaEventPublisher, error) {
-	producer, err := kafka.NewProducer(config)
+	producer, err := kafka.NewAsyncProducer(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kafka producer: %w", err)
+		return nil, fmt.Errorf("failed to create kafka async producer: %w", err)
 	}
 
 	return &KafkaEventPublisher{
@@ -36,37 +36,37 @@ func NewKafkaEventPublisher(config *kafka.Config) (*KafkaEventPublisher, error) 
 	}, nil
 }
 
-// PublishAccountCreated publishes an account created event
+// PublishAccountCreated publishes an account created event (async)
 func (p *KafkaEventPublisher) PublishAccountCreated(event AccountCreatedEvent) error {
 	key := strconv.Itoa(event.AccountID)
-	return p.producer.PublishEvent(kafka.TopicAccountCreated, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicAccountCreated, key, event)
 }
 
-// PublishDepositRequested publishes a deposit request command
+// PublishDepositRequested publishes a deposit request command (async)
 func (p *KafkaEventPublisher) PublishDepositRequested(event DepositRequestedEvent) error {
 	key := strconv.Itoa(event.AccountID)
-	return p.producer.PublishEvent(kafka.TopicDepositRequests, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicDepositRequests, key, event)
 }
 
-// PublishDepositCompleted publishes a deposit completed event
+// PublishDepositCompleted publishes a deposit completed event (async)
 func (p *KafkaEventPublisher) PublishDepositCompleted(event DepositCompletedEvent) error {
 	key := strconv.Itoa(event.AccountID)
-	return p.producer.PublishEvent(kafka.TopicTransactionDeposit, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicTransactionDeposit, key, event)
 }
 
-// PublishWithdrawalCompleted publishes a withdrawal completed event
+// PublishWithdrawalCompleted publishes a withdrawal completed event (async)
 func (p *KafkaEventPublisher) PublishWithdrawalCompleted(event WithdrawalCompletedEvent) error {
 	key := strconv.Itoa(event.AccountID)
-	return p.producer.PublishEvent(kafka.TopicTransactionWithdrawal, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicTransactionWithdrawal, key, event)
 }
 
-// PublishTransferCompleted publishes a transfer completed event
+// PublishTransferCompleted publishes a transfer completed event (async)
 func (p *KafkaEventPublisher) PublishTransferCompleted(event TransferCompletedEvent) error {
 	key := fmt.Sprintf("%d-%d", event.FromAccountID, event.ToAccountID)
-	return p.producer.PublishEvent(kafka.TopicTransactionTransfer, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicTransactionTransfer, key, event)
 }
 
-// PublishTransactionFailed publishes a transaction failed event
+// PublishTransactionFailed publishes a transaction failed event (async)
 func (p *KafkaEventPublisher) PublishTransactionFailed(event TransactionFailedEvent) error {
 	// Use account ID as key if available, otherwise use transaction type
 	key := event.TransactionType
@@ -75,7 +75,7 @@ func (p *KafkaEventPublisher) PublishTransactionFailed(event TransactionFailedEv
 	} else if event.FromAccountID != 0 {
 		key = strconv.Itoa(event.FromAccountID)
 	}
-	return p.producer.PublishEvent(kafka.TopicTransactionFailed, key, event)
+	return p.producer.PublishEventAsync(kafka.TopicTransactionFailed, key, event)
 }
 
 // Close closes the Kafka producer

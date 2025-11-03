@@ -44,3 +44,6 @@ terraform.tfvars
 
 # Claude Code documentation (project-specific AI instructions)
 CLAUDE.md
+
+#MacOS files
+*.DS_STORE

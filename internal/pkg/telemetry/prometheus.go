@@ -84,6 +84,35 @@ var (
 	)
 )
 
+// Kafka event publishing metrics
+var (
+	// Event publishing attempts
+	EventPublishingTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kafka_event_publishing_total",
+			Help: "Total number of event publishing attempts",
+		},
+		[]string{"status"}, // status: success, error, dropped
+	)
+
+	// Event publishing errors by type
+	EventPublishingErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "kafka_event_publishing_errors_total",
+			Help: "Total number of event publishing errors by type",
+		},
+		[]string{"error_type"}, // error_type: queue_full, kafka_error, marshal_error, producer_closed
+	)
+
+	// Current queue size (approximation)
+	EventQueueSize = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "kafka_event_queue_size",
+			Help: "Approximate number of events in publishing queue",
+		},
+	)
+)
+
 // System metrics
 var (
 	// Goroutine count
@@ -330,4 +359,26 @@ func RecordAccountBalance(balance float64) {
 // UpdateActiveAccounts updates the count of active accounts
 func UpdateActiveAccounts(count float64) {
 	ActiveAccountsGauge.Set(count)
+}
+
+// RecordEventPublishingSuccess records a successful event publish
+func RecordEventPublishingSuccess() {
+	EventPublishingTotal.WithLabelValues("success").Inc()
+}
+
+// RecordEventPublishingError records an event publishing error by type
+func RecordEventPublishingError(errorType string) {
+	EventPublishingTotal.WithLabelValues("error").Inc()
+	EventPublishingErrors.WithLabelValues(errorType).Inc()
+}
+
+// RecordEventDropped records when an event is dropped
+func RecordEventDropped(reason string) {
+	EventPublishingTotal.WithLabelValues("dropped").Inc()
+	EventPublishingErrors.WithLabelValues(reason).Inc()
+}
+
+// UpdateEventQueueSize updates the current event queue size
+func UpdateEventQueueSize(size float64) {
+	EventQueueSize.Set(size)
 }

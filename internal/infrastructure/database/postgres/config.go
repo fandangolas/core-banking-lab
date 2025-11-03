@@ -30,8 +30,8 @@ func NewConfigFromEnv() *Config {
 		User:              getEnv("DB_USER", "banking"),
 		Password:          getEnv("DB_PASSWORD", "banking_secure_pass_2024"),
 		SSLMode:           getEnv("DB_SSLMODE", "disable"),
-		MaxOpenConns:      getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-		MaxIdleConns:      getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+		MaxOpenConns:      getEnvAsInt("DB_MAX_OPEN_CONNS", 100), // Increased for high concurrency
+		MaxIdleConns:      getEnvAsInt("DB_MAX_IDLE_CONNS", 25),  // Keep more idle connections ready
 		ConnMaxLifetime:   getEnv("DB_CONN_MAX_LIFETIME", "30m"),
 		ConnMaxIdleTime:   getEnv("DB_CONN_MAX_IDLE_TIME", "5m"),
 		HealthCheckPeriod: getEnv("DB_HEALTH_CHECK_PERIOD", "1m"),

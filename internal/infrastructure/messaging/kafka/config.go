@@ -28,9 +28,9 @@ func NewConfigFromEnv() *Config {
 	return &Config{
 		Brokers:           brokers,
 		ClientID:          getEnv("KAFKA_CLIENT_ID", "banking-api"),
-		EnableIdempotence: getEnvBool("KAFKA_ENABLE_IDEMPOTENCE", true),
+		EnableIdempotence: getEnvBool("KAFKA_ENABLE_IDEMPOTENCE", false), // Disabled for high throughput - consumer handles idempotency
 		CompressionType:   getEnv("KAFKA_COMPRESSION_TYPE", "snappy"),
-		RequiredAcks:      getEnv("KAFKA_REQUIRED_ACKS", "1"), // Wait for leader only (changed from "all")
+		RequiredAcks:      getEnv("KAFKA_REQUIRED_ACKS", "all"), // Wait for all in-sync replicas for durability
 		MaxRetries:        getEnvInt("KAFKA_MAX_RETRIES", 5),
 		RetryBackoff:      getEnvDuration("KAFKA_RETRY_BACKOFF", 100*time.Millisecond),
 	}
@@ -47,10 +47,22 @@ func (c *Config) ToSaramaConfig() (*sarama.Config, error) {
 	config.Producer.Retry.Max = c.MaxRetries
 	config.Producer.Retry.Backoff = c.RetryBackoff
 
-	// When idempotence is enabled, Net.MaxOpenRequests must be 1
-	if c.EnableIdempotence {
+	// High-throughput producer settings
+	// When idempotence is disabled, we can have multiple in-flight requests for better throughput
+	if !c.EnableIdempotence {
+		config.Net.MaxOpenRequests = 10 // Increase parallelism (was 5)
+	} else {
+		// Sarama requires MaxOpenRequests=1 when idempotence is enabled
 		config.Net.MaxOpenRequests = 1
 	}
+
+	// Increase buffer sizes for high-load scenarios
+	config.ChannelBufferSize = 100000 // Kafka's internal buffer (was 10,000)
+
+	// Batching configuration for better throughput
+	config.Producer.Flush.MaxMessages = 10000     // Larger batches (was 1000)
+	config.Producer.Flush.Frequency = 500 * time.Millisecond // More accumulation time (was 100ms)
+	config.Producer.Flush.Messages = 1000         // Start flushing after 1000 messages (was 100)
 
 	// Set required acks
 	switch c.RequiredAcks {

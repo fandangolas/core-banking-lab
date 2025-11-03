@@ -61,8 +61,8 @@ export function deposit(accountId, amount) {
   const res = http.post(`${BASE_URL}/accounts/${accountId}/deposit`, payload, params);
 
   check(res, {
-    'deposit successful': (r) => r.status === 200,
-    'balance updated': (r) => r.json('balance') !== undefined,
+    'deposit successful': (r) => r.status === 202,  // Async processing returns 202 Accepted
+    'operation accepted': (r) => r.json('operation_id') !== undefined,
   });
 
   return res;
